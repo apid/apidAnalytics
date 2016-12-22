@@ -1,0 +1,3 @@
+# apidApigeeAnalytics
+
+This core plugin for [apid](http://github.com/30x/apid) and resposible for collecting analytics data for runtime traffic and puplishing to Apigee.
