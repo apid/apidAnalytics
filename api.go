@@ -1,10 +1,9 @@
 package apidAnalytics
 
 import (
-	"database/sql"
-	"encoding/json"
 	"github.com/30x/apid"
 	"net/http"
+	"strings"
 )
 
 var analyticsBasePath string
@@ -15,8 +14,8 @@ type errResponse struct {
 }
 
 type dbError struct {
-	reason string
-	errorCode    string
+	ErrorCode string `json:"errorCode"`
+	Reason    string `json:"reason"`
 }
 
 type tenant struct {
@@ -32,66 +31,35 @@ func initAPI(services apid.Services) {
 
 func saveAnalyticsRecord(w http.ResponseWriter, r *http.Request) {
 
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
 	db, _ := data.DB()
 	if db == nil {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte("Still initializing service"))
+		writeError(w, http.StatusInternalServerError,"INTERNAL_SERVER_ERROR","Service is not initialized completely")
+		return
+	}
+
+	if !strings.EqualFold(r.Header.Get("Content-Type"),"application/json") {
+		writeError(w, http.StatusBadRequest, "UNSUPPORTED_CONTENT_TYPE","Only supported content type is application/json")
 		return
 	}
 
 	vars := apid.API().Vars(r)
 	scopeuuid := vars["bundle_scope_uuid"]
-	tenant, err := getTenantForScope(scopeuuid)
-	if err.errorCode != "" {
-		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-		switch err.errorCode {
-		case "SEARCH_INTERNAL_ERROR":
-			w.WriteHeader(http.StatusInternalServerError)
-			if err := json.NewEncoder(w).Encode(errResponse{"SEARCH_INTERNAL_ERROR", err.reason}); err != nil {
-				panic(err)
-			}
+	tenant, dbErr := getTenantForScope(scopeuuid)
+	if dbErr.ErrorCode != "" {
+		switch dbErr.ErrorCode {
+		case "INTERNAL_SEARCH_ERROR":
+			writeError(w, http.StatusInternalServerError, "INTERNAL_SEARCH_ERROR", dbErr.Reason)
 		case "UNKNOWN_SCOPE":
-			w.WriteHeader(http.StatusBadRequest)
-			if err := json.NewEncoder(w).Encode(errResponse{"UNKNOWN_SCOPE", err.reason}); err != nil {
-				panic(err)
-			}
+			writeError(w, http.StatusBadRequest, "UNKNOWN_SCOPE", dbErr.Reason)
 		}
 	} else {
-		message := saveToFile(tenant)
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(message))
-	}
-}
-
-func getTenantForScope(scopeuuid string) (tenant, dbError) {
-	// TODO: create a cache during init and refresh it on every failure or listen for snapshot update event
-	var org, env string
-	{
-		db, err := apid.Data().DB()
-		switch {
-		case err != nil:
-			reason := err.Error()
-			errorCode := "SEARCH_INTERNAL_ERROR"
-			return tenant{org, env}, dbError{reason, errorCode}
-		}
-
-		error := db.QueryRow("SELECT env, org FROM DATA_SCOPE WHERE id = ?;", scopeuuid).Scan(&env, &org)
-
-		switch {
-		case error == sql.ErrNoRows:
-			reason := "No tenant found for this scopeuuid: " + scopeuuid
-			errorCode := "UNKNOWN_SCOPE"
-			return tenant{org, env}, dbError{reason, errorCode}
-		case error != nil:
-			reason := error.Error()
-			errorCode := "SEARCH_INTERNAL_ERROR"
-			return tenant{org, env}, dbError{reason, errorCode}
+		err := processPayload(tenant, scopeuuid, r);
+		if err.ErrorCode == "" {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			writeError(w, http.StatusBadRequest, err.ErrorCode, err.Reason)
 		}
 	}
-	return tenant{org, env}, dbError{}
-}
-
-func saveToFile(tenant tenant) string {
-	message := "hey " + tenant.org + "~" + tenant.env
-	return message
 }
