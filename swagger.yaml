@@ -1,0 +1,126 @@
+swagger: "2.0"
+info:
+  version: "v1"
+  title: Swagger API
+host: playground.apistudio.io
+basePath: /try/64e409ad-aebb-4bbc-977e-f0e0f22209d4
+schemes:
+  - http
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  '/analytics/{bundle_scope_uuid}':
+    x-swagger-router-controller: analytics
+    parameters:
+      - name: bundle_scope_uuid
+        in: path
+        required: true
+        description: bundle UUID that can be mapped to a scope by APID
+        type: string
+      - name: analytics_data 
+        in: body
+        description: The analytics data you want to post
+        required: true
+        schema:
+          $ref: "#/definitions/records"
+    post:
+      responses:
+        "200":
+          description: Success
+        default:
+          description: Error
+          schema:
+            $ref: "#/definitions/errResponse"
+            
+definitions:
+  records:
+    type: array
+    minItems: 1
+    items:
+       $ref: "#/definitions/eachRecord"
+    
+  eachRecord:
+    type: object
+    required:
+      - access_token
+      - apiproxy
+      - apiproxy_revision
+      - client_id
+      - client_ip
+      - client_received_end_timestamp
+      - client_received_start_timestamp
+      - client_sent_end_timestamp
+      - client_sent_start_timestamp
+      - request_path
+      - request_uri
+      - request_verb
+      - response_status_code
+      - useragent
+      - target
+      - target_received_end_timestamp
+      - target_received_start_timestamp
+      - target_response_code
+      - target_sent_end_timestamp
+      - target_sent_start_timestamp
+    properties:
+      access_token:
+        type: string
+      apiproxy:
+        type: string
+      apiproxy_revision:
+        type: string
+      client_id:
+        type: string
+      client_ip:
+        type: string
+      client_received_end_timestamp:
+        type: integer
+        format: int64
+      client_received_start_timestamp:
+        type: integer
+        format: int64
+      client_sent_end_timestamp:
+        type: integer
+        format: int64
+      client_sent_start_timestamp:
+        type: integer
+        format: int64
+      request_path:
+        type: string
+      request_uri:
+        type: string
+      request_verb:
+        type: string
+      response_status_code:
+        type: integer
+      useragent:
+        type: string
+      target:
+        type: string
+      target_received_end_timestamp:
+        type: integer
+        format: int64
+      target_received_start_timestamp:
+        type: integer
+        format: int64
+      target_response_code:
+        type: integer
+      target_sent_end_timestamp:
+        type: integer
+        format: int64
+      target_sent_start_timestamp:
+        type: integer
+        format: int64
+  
+  errResponse:
+    required:
+      - errrorCode
+      - reason
+    properties:
+      errrorCode:
+        type: string
+      reason:
+        type: string

@@ -38,12 +38,6 @@ func initUploadManager() {
 			}
 		}
 	}()
-
-}
-
-func uploadDir(file os.FileInfo) bool {
-	// TODO: handle upload to UAP file by file
-	return false
 }
 
 func handleUploadDirStatus(file os.FileInfo, status bool) {

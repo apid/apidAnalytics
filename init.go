@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/30x/apid"
 	"os"
+	"sync"
 	"path/filepath"
 )
 
@@ -24,13 +25,10 @@ const (
 	analyticsUploadInterval        = "apidanalytics_upload_interval" // config in seconds
 	analyticsUploadIntervalDefault = "5"
 
-	uapEndpoint = "apidanalytics_uap_endpoint" // config
+	uapServerBase = "apidanalytics_uap_server_base" // config
 
-	uapRepo        = "apidanalytics_uap_repo" // config
-	uapRepoDefault = "edge"
-
-	uapDataset        = "apidanalytics_uap_dataset" // config
-	uapDatasetDefault = "api"
+	useCaching = "apidanalytics_use_caching"
+	useCachingDefault = true
 
 	maxRetries = 3
 )
@@ -41,17 +39,34 @@ var (
 	log    apid.LogService
 	config apid.ConfigService
 	data   apid.DataService
+	events apid.EventsService
+	unsafeDB apid.DB
+	dbMux    sync.RWMutex
 
 	localAnalyticsBaseDir      string
 	localAnalyticsTempDir      string
 	localAnalyticsStagingDir   string
 	localAnalyticsFailedDir    string
 	localAnalyticsRecoveredDir string
+	uapEndpoint string
 )
 
 // apid.RegisterPlugin() is required to be called in init()
 func init() {
 	apid.RegisterPlugin(initPlugin)
+}
+
+func getDB() apid.DB {
+	dbMux.RLock()
+	db := unsafeDB
+	dbMux.RUnlock()
+	return db
+}
+
+func setDB(db apid.DB) {
+	dbMux.Lock()
+	unsafeDB = db
+	dbMux.Unlock()
 }
 
 // initPlugin will be called by apid to initialize
@@ -67,11 +82,12 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 		return pluginData, fmt.Errorf("Missing required config value:  %s: ", err)
 	}
 
-	for _, key := range []string{uapEndpoint} {
+	for _, key := range []string{uapServerBase} {
 		if !config.IsSet(key) {
 			return pluginData, fmt.Errorf("Missing required config value: %s", key)
 		}
 	}
+	uapEndpoint = uapServerBase + "/analytics"
 
 	directories := []string{localAnalyticsBaseDir, localAnalyticsTempDir, localAnalyticsStagingDir, localAnalyticsFailedDir, localAnalyticsRecoveredDir}
 	err = createDirectories(directories)
@@ -81,9 +97,28 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 	}
 
 	data = services.Data()
+	events = services.Events()
+	events.Listen("ApigeeSync", &handler{})
 
 	// TODO: perform crash recovery
 	initUploadManager()
+
+	if (config.GetBool(useCaching)) {
+		err = createTenantCache()
+		if err != nil {
+			return pluginData, fmt.Errorf("Could not create tenant cache %s: ", err)
+		}
+		log.Debug("Created a local cache for datasope information")
+
+		err = createDeveloperInfoCache()
+		if err != nil {
+			return pluginData, fmt.Errorf("Could not creata developer info cache %s: ", err)
+		}
+		log.Debug("Created a local cache for developer and app information")
+	} else {
+		log.Debug("Will not be caching any info and make a DB call for every analytics msg")
+	}
+
 	initAPI(services)
 
 	log.Debug("end init for apidAnalytics plugin")
@@ -112,12 +147,11 @@ func setConfig(services apid.Services) error {
 	config.SetDefault(analyticsCollectionInterval, analyticsCollectionIntervalDefault)
 	config.SetDefault(analyticsCollectionNoFiles, analyticsCollectionNoFilesDefault)
 
+	// set default config for local caching
+	config.SetDefault(useCaching, useCachingDefault)
+
 	// set default config for upload interval
 	config.SetDefault(analyticsUploadInterval, analyticsUploadIntervalDefault)
-
-	// set defaults for uap related properties
-	config.SetDefault(uapRepo, uapRepoDefault)
-	config.SetDefault(uapDataset, uapDatasetDefault)
 
 	return nil
 }
