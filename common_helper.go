@@ -27,7 +27,7 @@ func createTenantCache() error {
 			tenantCache[id] = tenant{org: org, env: env, tenantId: tenantId}
 		}
 	}
-	log.Debugf("Found scopes : %d", len(tenantCache))
+	log.Debugf("Couch of datadscopes in the cache: %d", len(tenantCache))
 	return nil
 }
 
@@ -62,6 +62,7 @@ func createDeveloperInfoCache() error {
 			developerInfoCache[keyForMap] = developerInfo{apiProduct: apiPrd, developerApp: devApp, developerEmail: devEmail, developer: dev}
 		}
 	}
+	log.Debugf("Count of apiKey~tenantId combinations in the cache: %d", len(developerInfoCache))
 	return nil
 }
 

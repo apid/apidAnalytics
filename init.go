@@ -31,6 +31,7 @@ const (
 	useCachingDefault = true
 
 	maxRetries = 3
+	retryFailedDirBatchSize = 10
 )
 
 // keep track of the services that this plugin will use
@@ -48,7 +49,6 @@ var (
 	localAnalyticsStagingDir   string
 	localAnalyticsFailedDir    string
 	localAnalyticsRecoveredDir string
-	uapEndpoint string
 )
 
 // apid.RegisterPlugin() is required to be called in init()
@@ -82,12 +82,13 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 		return pluginData, fmt.Errorf("Missing required config value:  %s: ", err)
 	}
 
+	// TOOO: remove later
+	//config.SetDefault(uapServerBase,"https://edgex-internal-test.e2e.apigee.net/edgex")
 	for _, key := range []string{uapServerBase} {
 		if !config.IsSet(key) {
 			return pluginData, fmt.Errorf("Missing required config value: %s", key)
 		}
 	}
-	uapEndpoint = uapServerBase + "/analytics"
 
 	directories := []string{localAnalyticsBaseDir, localAnalyticsTempDir, localAnalyticsStagingDir, localAnalyticsFailedDir, localAnalyticsRecoveredDir}
 	err = createDirectories(directories)
@@ -102,22 +103,6 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 
 	// TODO: perform crash recovery
 	initUploadManager()
-
-	if (config.GetBool(useCaching)) {
-		err = createTenantCache()
-		if err != nil {
-			return pluginData, fmt.Errorf("Could not create tenant cache %s: ", err)
-		}
-		log.Debug("Created a local cache for datasope information")
-
-		err = createDeveloperInfoCache()
-		if err != nil {
-			return pluginData, fmt.Errorf("Could not creata developer info cache %s: ", err)
-		}
-		log.Debug("Created a local cache for developer and app information")
-	} else {
-		log.Debug("Will not be caching any info and make a DB call for every analytics msg")
-	}
 
 	initAPI(services)
 
