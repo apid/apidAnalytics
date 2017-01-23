@@ -27,7 +27,7 @@ func createTenantCache() error {
 			tenantCache[id] = tenant{org: org, env: env, tenantId: tenantId}
 		}
 	}
-	log.Debugf("Couch of datadscopes in the cache: %d", len(tenantCache))
+	log.Debugf("Count of datadscopes in the cache: %d", len(tenantCache))
 	return nil
 }
 

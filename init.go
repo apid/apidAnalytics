@@ -29,9 +29,6 @@ const (
 
 	useCaching = "apidanalytics_use_caching"
 	useCachingDefault = true
-
-	maxRetries = 3
-	retryFailedDirBatchSize = 10
 )
 
 // keep track of the services that this plugin will use
@@ -73,7 +70,7 @@ func setDB(db apid.DB) {
 func initPlugin(services apid.Services) (apid.PluginData, error) {
 
 	// set a logger that is annotated for this plugin
-	log = services.Log().ForModule("analytics")
+	log = services.Log().ForModule("apigeeAnalytics")
 	log.Debug("start init for apidAnalytics plugin")
 
 	// set configuration
@@ -82,12 +79,14 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 		return pluginData, fmt.Errorf("Missing required config value:  %s: ", err)
 	}
 
-	// TOOO: remove later
-	//config.SetDefault(uapServerBase,"https://edgex-internal-test.e2e.apigee.net/edgex")
+	// localTesting
+	config.SetDefault(uapServerBase,"http://localhost:9010")
+
 	for _, key := range []string{uapServerBase} {
 		if !config.IsSet(key) {
 			return pluginData, fmt.Errorf("Missing required config value: %s", key)
 		}
+
 	}
 
 	directories := []string{localAnalyticsBaseDir, localAnalyticsTempDir, localAnalyticsStagingDir, localAnalyticsFailedDir, localAnalyticsRecoveredDir}
@@ -101,11 +100,11 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 	events = services.Events()
 	events.Listen("ApigeeSync", &handler{})
 
-	// TODO: perform crash recovery
+	initCrashRecovery()
+
 	initUploadManager()
 
 	initAPI(services)
-
 	log.Debug("end init for apidAnalytics plugin")
 	return pluginData, nil
 }
@@ -149,7 +148,7 @@ func createDirectories(directories []string) error {
 			if error != nil {
 				return error
 			}
-			log.Infof("created directory %s: ", path)
+			log.Infof("created directory for analytics data collection %s: ", path)
 		}
 	}
 	return nil

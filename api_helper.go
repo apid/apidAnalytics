@@ -55,6 +55,7 @@ func validateEnrichPublish(tenant tenant, scopeuuid string, body []byte) errResp
 			valid, err := validate(recordMap)
 			if valid {
 				enrich(recordMap, scopeuuid, tenant)
+				// TODO: Remove log
 				log.Debugf("Raw records : %v ", eachRecord)
 			} else {
 				return err				// Even if there is one bad record, then reject entire batch
@@ -99,6 +100,7 @@ func enrich(recordMap map[string]interface{}, scopeuuid string, tenant tenant) {
 	if exists {
 		apiKey := apiKey.(string)
 		devInfo := getDeveloperInfo(tenant.tenantId, apiKey)
+		// TODO: Remove log
 		log.Debugf("developerInfo = %v",  devInfo)
 		if recordMap["api_product"] == "" {
 			recordMap["api_product"] = devInfo.apiProduct

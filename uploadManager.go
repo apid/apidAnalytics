@@ -8,9 +8,7 @@ import (
 	"time"
 )
 
-var (
-	retriesMap map[string]int
-)
+var retriesMap map[string]int
 
 //TODO:  make sure that this instance gets initialized only once since we dont want multiple upload manager tickers running
 func initUploadManager() {
@@ -19,11 +17,11 @@ func initUploadManager() {
 
 	// TODO: add a way to make sure that this go routine is always running
 	go func() {
-		ticker := time.NewTicker(time.Millisecond * config.GetDuration(analyticsUploadInterval) * 1000)
+		ticker := time.NewTicker(time.Second * config.GetDuration(analyticsUploadInterval))
 		log.Debugf("Intialized upload manager to check for staging directory")
 		defer ticker.Stop() // Ticker will keep running till go routine is running i.e. till application is running
 
-		for t := range ticker.C {
+		for range ticker.C {
 			files, err := ioutil.ReadDir(localAnalyticsStagingDir)
 
 			if err != nil {
@@ -32,7 +30,6 @@ func initUploadManager() {
 
 			uploadedDirCnt := 0
 			for _, file := range files {
-				log.Debugf("t: %s , directory: %s", t, file.Name())
 				if file.IsDir() {
 					status := uploadDir(file)
 					handleUploadDirStatus(file, status)
@@ -59,7 +56,7 @@ func handleUploadDirStatus(dir os.FileInfo, status bool) {
 		delete(retriesMap, dir.Name())
 	} else {
 		retriesMap[dir.Name()] = retriesMap[dir.Name()] + 1
-		if retriesMap[dir.Name()] > maxRetries {
+		if retriesMap[dir.Name()] >= maxRetries {
 			log.Errorf("Max Retires exceeded for folder: %s", completePath)
 			failedDirPath := filepath.Join(localAnalyticsFailedDir, dir.Name())
 			err := os.Rename(completePath, failedDirPath)

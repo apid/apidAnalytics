@@ -36,22 +36,19 @@ func processSnapshot(snapshot *common.Snapshot) {
 	}
 	setDB(db)
 
-	// After first snapshot is received, create local cache
 	if (config.GetBool(useCaching)) {
 		err = createTenantCache()
 		if err != nil {
-			log.Debugf("Could not create a local cache for datascope info: %s", err.Error())
+			log.Error(err)
 		} else {
 			log.Debug("Created a local cache for datasope information")
 		}
 		err = createDeveloperInfoCache()
 		if err != nil {
-			log.Debugf("Could not create a local cache for developer and app info: %s", err.Error())
-
+			log.Error(err)
 		} else {
 			log.Debug("Created a local cache for developer and app information")
 		}
-		log.Debug("Created a local cache for developer and app information")
 	} else {
 		log.Debug("Will not be caching any info and make a DB call for every analytics msg")
 	}
