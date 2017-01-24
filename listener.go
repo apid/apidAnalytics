@@ -74,7 +74,7 @@ func processChange(changes *common.ChangeList) {
 					ele.Get("scope", &tenantid)
 					ele.Get("org", &org)
 					ele.Get("env", &env)
-					tenantCache[scopeuuid] = tenant{org: org, env: env, tenantId: tenantid}
+					tenantCache[scopeuuid] = tenant{Org: org, Env: env, TenantId: tenantid}
 				}
 			case common.Delete:
 				rows = append(rows, payload.NewRow)

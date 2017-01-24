@@ -34,6 +34,7 @@ var _ = BeforeSuite(func() {
 
 	config.Set("data_path", testTempDir)
 	config.Set(uapServerBase, "http://localhost:9000") // dummy value
+	config.Set(useCaching, false)
 
 	db, err := apid.Data().DB()
 	Expect(err).NotTo(HaveOccurred())

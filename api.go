@@ -19,9 +19,9 @@ type dbError struct {
 }
 
 type tenant struct {
-	org string
-	env string
-	tenantId string
+	Org string
+	Env string
+	TenantId string
 }
 
 func initAPI(services apid.Services) {
@@ -40,7 +40,7 @@ func saveAnalyticsRecord(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db = getDB()			// When snapshot isnt processed
+	db = getDB()				// When snapshot isnt processed
 	if db == nil {
 		writeError(w, http.StatusInternalServerError,"INTERNAL_SERVER_ERROR","Service is not initialized completely")
 		return

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"io/ioutil"
 	"net/http"
-	"compress/gzip"
 	"fmt"
 	"time"
 )
@@ -19,6 +18,10 @@ const (
 )
 
 var token string
+
+var client *http.Client = &http.Client{
+		Timeout: time.Duration(60 * time.Second),		// default timeout of 60 seconds while connecting to s3/GCS
+          }
 
 func addHeaders(req *http.Request) {
 	req.Header.Add("Authorization", "Bearer " + token)
@@ -56,13 +59,11 @@ func uploadFile(tenant, relativeFilePath, completeFilePath string) (bool, error)
 		return false, err
 	} else {
 		log.Debugf("signed URL : %s", signedUrl)
-		return true, nil
-		//return uploadFileToDatastore(completeFilePath, signedUrl)
+		return uploadFileToDatastore(completeFilePath, signedUrl)
 	}
 }
 
 func getSignedUrl(tenant, relativeFilePath, completeFilePath string) (string, error) {
-	client := &http.Client{}
 	//uapCollectionUrl := config.GetString(uapServerBase) + "/analytics"
 
 	// localTesting
@@ -105,36 +106,36 @@ func getSignedUrl(tenant, relativeFilePath, completeFilePath string) (string, er
 
 func uploadFileToDatastore(completeFilePath, signedUrl string) (bool, error) {
 	// read gzip file that needs to be uploaded
-	f, err := os.Open(completeFilePath)
+	file, err := os.Open(completeFilePath)
 	if err != nil {
 		return false, err
 	}
-	defer f.Close()
-	reader, err := gzip.NewReader(f)
-	if err != nil {
-		return false, fmt.Errorf("Cannot create reader on gzip file %v", err)
-	}
+	defer file.Close()
 
-	client := &http.Client{}
-	req, err := http.NewRequest("PUT", signedUrl, reader)
+	req, err := http.NewRequest("PUT", signedUrl, file)
 	if err != nil {
-		return false, fmt.Errorf("Parsing URL failed due to %s",err.Error())
+		return false, fmt.Errorf("Parsing URL failed due to %v", err)
 	}
 
 	req.Header.Set("Expect", "100-continue")
 	req.Header.Set("Content-Type", "application/x-gzip")
+
+	fileStats, err := file.Stat()
+	if err != nil {
+		return false, fmt.Errorf("Could not get content length for file: %v", err)
+	}
+	req.ContentLength = fileStats.Size()
 
 	resp, err := client.Do(req)
 	if err != nil {
 		return false, err
 	}
 	defer resp.Body.Close()
+
 	if(resp.StatusCode == 200) {
-		// TODO: Remove
-		log.Debugf("response: %v", resp)
 		return true, nil
 	} else {
-		return false,fmt.Errorf("Final Datastore (S3/GCS) returned Error: %s ", resp.Status)
+		return false,fmt.Errorf("Final Datastore (S3/GCS) returned Error: %v ", resp.Status)
 	}
 }
 

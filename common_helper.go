@@ -24,7 +24,7 @@ func createTenantCache() error {
 		defer rows.Close()
 		for rows.Next() {
 			rows.Scan(&env, &org, &tenantId, &id);
-			tenantCache[id] = tenant{org: org, env: env, tenantId: tenantId}
+			tenantCache[id] = tenant{Org: org, Env: env, TenantId: tenantId}
 		}
 	}
 	log.Debugf("Count of datadscopes in the cache: %d", len(tenantCache))
@@ -59,7 +59,7 @@ func createDeveloperInfoCache() error {
 			dev := getValuesIgnoringNull(developer)
 			devEmail := getValuesIgnoringNull(developerEmail)
 
-			developerInfoCache[keyForMap] = developerInfo{apiProduct: apiPrd, developerApp: devApp, developerEmail: devEmail, developer: dev}
+			developerInfoCache[keyForMap] = developerInfo{ApiProduct: apiPrd, DeveloperApp: devApp, DeveloperEmail: devEmail, Developer: dev}
 		}
 	}
 	log.Debugf("Count of apiKey~tenantId combinations in the cache: %d", len(developerInfoCache))
@@ -67,7 +67,6 @@ func createDeveloperInfoCache() error {
 }
 
 func getTenantForScope(scopeuuid string) (tenant, dbError) {
-
 	if (config.GetBool(useCaching)) {
 		_, exists := tenantCache[scopeuuid]
 		if !exists {
@@ -99,13 +98,15 @@ func getTenantForScope(scopeuuid string) (tenant, dbError) {
 			return tenant{}, dbError{errorCode, reason}
 		}
 
-		return tenant{org: org, env:env, tenantId: tenantId}, dbError{}
+		return tenant{Org: org, Env:env, TenantId: tenantId}, dbError{}
 	}
+	// TODO: local testing
+	//return tenant{Org: "testorg", Env:"testenv", TenantId: "tenantid"}, dbError{}
 }
 
 func getDeveloperInfo(tenantId string, apiKey string) developerInfo {
 	if (config.GetBool(useCaching)) {
-	keyForMap := getKeyForDeveloperInfoCache(tenantId, apiKey)
+		keyForMap := getKeyForDeveloperInfoCache(tenantId, apiKey)
 		_, exists := developerInfoCache[keyForMap]
 		if !exists {
 			log.Debugf("No data found for for tenantId = %s and apiKey = %s", tenantId, apiKey)
@@ -122,7 +123,7 @@ func getDeveloperInfo(tenantId string, apiKey string) developerInfo {
 			"INNER JOIN API_PRODUCT as ap ON ap.id = mp.apiprdt_id " +
 			"INNER JOIN APP AS a ON a.id = mp.app_id " +
 			"INNER JOIN DEVELOPER as d ON d.id = a.developer_id " +
-			"where mp.tenant_id = " + tenantId + " and mp.appcred_id = " + apiKey + ";"
+			"where mp.tenant_id = \"" + tenantId + "\" and mp.appcred_id = \"" + apiKey + "\";"
 		error := db.QueryRow(sSql).Scan(&apiProduct, &developerApp, &developer, &developerEmail)
 
 		switch {
@@ -139,8 +140,11 @@ func getDeveloperInfo(tenantId string, apiKey string) developerInfo {
 		dev := getValuesIgnoringNull(developer)
 		devEmail := getValuesIgnoringNull(developerEmail)
 
-		return developerInfo{apiProduct: apiPrd, developerApp: devApp, developerEmail: devEmail, developer: dev}
+		return developerInfo{ApiProduct: apiPrd, DeveloperApp: devApp, DeveloperEmail: devEmail, Developer: dev}
 	}
+	// TODO: local testing
+	// return developerInfo{ApiProduct: "testproduct", DeveloperApp: "testapp", DeveloperEmail: "testdeveloper@test.com", Developer: "testdeveloper"}
+
 }
 
 func getValuesIgnoringNull(sqlValue sql.NullString) string {

@@ -11,10 +11,10 @@ import (
 
 
 type developerInfo struct {
-	apiProduct	string
-	developerApp	string
-	developerEmail	string
-	developer	string
+	ApiProduct	string
+	DeveloperApp	string
+	DeveloperEmail	string
+	Developer	string
 }
 
 func processPayload(tenant tenant, scopeuuid string,  r *http.Request) errResponse {
@@ -48,7 +48,10 @@ func processPayload(tenant tenant, scopeuuid string,  r *http.Request) errRespon
 
 func validateEnrichPublish(tenant tenant, scopeuuid string, body []byte) errResponse {
 	var raw map[string]interface{}
-	json.Unmarshal(body, &raw)
+	err := json.Unmarshal(body, &raw)
+	if err != nil {
+		return errResponse{"BAD_DATA", "Not a valid JSON payload"}
+	}
 	if records := raw["records"]; records != nil {
 		for _, eachRecord := range records.([]interface{}) {
 			recordMap := eachRecord.(map[string]interface{})
@@ -56,7 +59,7 @@ func validateEnrichPublish(tenant tenant, scopeuuid string, body []byte) errResp
 			if valid {
 				enrich(recordMap, scopeuuid, tenant)
 				// TODO: Remove log
-				log.Debugf("Raw records : %v ", eachRecord)
+				log.Debugf("Raw records : %v ", recordMap)
 			} else {
 				return err				// Even if there is one bad record, then reject entire batch
 			}
@@ -81,44 +84,50 @@ func validate(recordMap map[string]interface{}) (bool, errResponse) {
 	if exists1 && exists2 {
 		if crst.(int64) > cret.(int64) {
 			return false, errResponse{"BAD_DATA", "client_received_start_timestamp > client_received_end_timestamp"}
-
 		}
 	}
 	return true, errResponse{}
 }
 
 func enrich(recordMap map[string]interface{}, scopeuuid string, tenant tenant) {
-	if recordMap["organization"] == "" {
-		recordMap["organization"] = tenant.org
+	org, orgExists := recordMap["organization"]
+	if !orgExists || org.(string) == "" {
+		recordMap["organization"] = tenant.Org
+	}
 
+	env, envExists := recordMap["environment"]
+	if !envExists || env.(string) == "" {
+		recordMap["environment"] = tenant.Env
 	}
-	if recordMap["environment"] == "" {
-		recordMap["environment"] = tenant.env
-	}
+
 	apiKey, exists := recordMap["client_id"]
 	// apiKey doesnt exist then ignore adding developer fields
 	if exists {
 		apiKey := apiKey.(string)
-		devInfo := getDeveloperInfo(tenant.tenantId, apiKey)
+		devInfo := getDeveloperInfo(tenant.TenantId, apiKey)
 		// TODO: Remove log
-		log.Debugf("developerInfo = %v",  devInfo)
-		if recordMap["api_product"] == "" {
-			recordMap["api_product"] = devInfo.apiProduct
+		_, exists := recordMap["api_product"]
+		if !exists {
+			recordMap["api_product"] = devInfo.ApiProduct
 		}
-		if recordMap["developer_app"] == "" {
-			recordMap["developer_app"] = devInfo.developerApp
+		_, exists = recordMap["developer_app"]
+		if !exists {
+			recordMap["developer_app"] = devInfo.DeveloperApp
 		}
-		if recordMap["developer_email"] == "" {
-			recordMap["developer_email"] = devInfo.developerEmail
+		_, exists = recordMap["developer_email"]
+		if !exists {
+			recordMap["developer_email"] = devInfo.DeveloperEmail
 		}
-		if recordMap["developer"] == "" {
-			recordMap["developer"] = devInfo.developer
+		_, exists = recordMap["developer"]
+		if !exists {
+			recordMap["developer"] = devInfo.Developer
 		}
 	}
 }
 
 func publishToChannel(records []interface{})  {
 	// TODO: add the batch of records to a channel for consumption
+	log.Debugf("records on channel : %v", records)
 	return
 }
 
