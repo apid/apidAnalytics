@@ -3,9 +3,10 @@ package apidAnalytics
 import (
 	"fmt"
 	"github.com/30x/apid"
+	"github.com/30x/apidApigeeSync"
 	"os"
-	"sync"
 	"path/filepath"
+	"sync"
 )
 
 // TODO: figure out how to get these from a apid config file vs constant values
@@ -27,20 +28,20 @@ const (
 
 	uapServerBase = "apidanalytics_uap_server_base" // config
 
-	useCaching = "apidanalytics_use_caching"
+	useCaching        = "apidanalytics_use_caching"
 	useCachingDefault = true
 )
 
 // keep track of the services that this plugin will use
 // note: services would also be available directly via the package global "apid" (eg. `apid.Log()`)
 var (
-	log    apid.LogService
-	config apid.ConfigService
-	data   apid.DataService
-	events apid.EventsService
-	unsafeDB apid.DB
-	dbMux    sync.RWMutex
-
+	log                        apid.LogService
+	config                     apid.ConfigService
+	data                       apid.DataService
+	events                     apid.EventsService
+	unsafeDB                   apid.DB
+	dbMux                      sync.RWMutex
+	actToken                   string = ""
 	localAnalyticsBaseDir      string
 	localAnalyticsTempDir      string
 	localAnalyticsStagingDir   string
@@ -66,6 +67,14 @@ func setDB(db apid.DB) {
 	dbMux.Unlock()
 }
 
+// Should be called, whenever the token expires.
+// (FIXME: Needs test cases)
+func getBearerToken() string {
+	var str apidApigeeSync.Export
+	actToken = str.GetCurrentToken()
+	return actToken
+}
+
 // initPlugin will be called by apid to initialize
 func initPlugin(services apid.Services) (apid.PluginData, error) {
 
@@ -80,7 +89,7 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 	}
 
 	// localTesting
-	config.SetDefault(uapServerBase,"http://localhost:9010")
+	config.SetDefault(uapServerBase, "http://localhost:9010")
 
 	for _, key := range []string{uapServerBase} {
 		if !config.IsSet(key) {
