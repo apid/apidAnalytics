@@ -85,8 +85,8 @@ func getTenantForScope(scopeuuid string) (tenant, dbError) {
 			return tenant{}, dbError{errorCode, reason}
 		} else {
 			// acquire a read lock as this cache has 1 writer as well
-			tenantCache.RLock()
-			defer tenantCache.RUnlock()
+			tenantCachelock.RLock()
+			defer tenantCachelock.RUnlock()
 			return tenantCache[scopeuuid], dbError{}
 		}
 	} else {

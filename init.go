@@ -19,14 +19,11 @@ const (
 	analyticsCollectionInterval        = "apidanalytics_collection_interval" // config in seconds
 	analyticsCollectionIntervalDefault = "120"
 
-	analyticsCollectionNoFiles        = "apidanalytics_collection_no_files" // config
-	analyticsCollectionNoFilesDefault = "1"
-
 	analyticsUploadInterval        = "apidanalytics_upload_interval" // config in seconds
 	analyticsUploadIntervalDefault = "5"
 
 	analyticsBufferChannelSize  = "apidanalytics_buffer_channel_size"
-	analyticsBufferChannelSizeDefault = 10 // number of slots
+	analyticsBufferChannelSizeDefault = 100 // number of slots
 
 	uapServerBase = "apidanalytics_uap_server_base" // config
 
@@ -133,9 +130,8 @@ func setConfig(services apid.Services) error {
 	localAnalyticsFailedDir = filepath.Join(localAnalyticsBaseDir, "failed")
 	localAnalyticsRecoveredDir = filepath.Join(localAnalyticsBaseDir, "recovered")
 
-	// set default config for collection interval and number of files per interval
+	// set default config for collection interval
 	config.SetDefault(analyticsCollectionInterval, analyticsCollectionIntervalDefault)
-	config.SetDefault(analyticsCollectionNoFiles, analyticsCollectionNoFilesDefault)
 
 	// set default config for local caching
 	config.SetDefault(useCaching, useCachingDefault)
