@@ -68,6 +68,9 @@ func processChange(changes *common.ChangeList) {
 			switch payload.Operation {
 			case common.Insert, common.Update:
 				rows = append(rows, payload.NewRow)
+				// Lock before writing to the map as it has multiple readers
+				tenantCachelock.Lock()
+				defer tenantCachelock.Unlock()
 				for _, ele := range rows {
 					var scopeuuid, tenantid, org, env string
 					ele.Get("id", &scopeuuid)
@@ -78,6 +81,8 @@ func processChange(changes *common.ChangeList) {
 				}
 			case common.Delete:
 				rows = append(rows, payload.NewRow)
+				tenantCachelock.Lock()
+				defer tenantCachelock.Unlock()
 				for _, ele := range rows {
 					var scopeuuid string
 					ele.Get("id", &scopeuuid)

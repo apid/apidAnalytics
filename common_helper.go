@@ -3,10 +3,14 @@ package apidAnalytics
 import (
 	"database/sql"
 	"fmt"
+	"sync"
 )
 
 var tenantCache map[string]tenant
 var developerInfoCache map[string]developerInfo
+var tenantCachelock = sync.RWMutex{}
+var developerInfoCacheLock = sync.RWMutex{}
+
 
 func createTenantCache() error {
 	tenantCache = make(map[string]tenant)
@@ -22,12 +26,15 @@ func createTenantCache() error {
 		return fmt.Errorf("Count not get datascope from DB due to : %s", error.Error())
 	} else  {
 		defer rows.Close()
+		// Lock before writing to the map as it has multiple readers
+		tenantCachelock.Lock()
+		defer tenantCachelock.Unlock()
 		for rows.Next() {
 			rows.Scan(&env, &org, &tenantId, &id);
 			tenantCache[id] = tenant{Org: org, Env: env, TenantId: tenantId}
 		}
 	}
-	log.Debugf("Count of datadscopes in the cache: %d", len(tenantCache))
+	log.Debugf("Count of data scopes in the cache: %d", len(tenantCache))
 	return nil
 }
 
@@ -50,6 +57,9 @@ func createDeveloperInfoCache() error {
 		return fmt.Errorf("Count not get developerInfo from DB due to : %s", error.Error())
 	} else {
 		defer rows.Close()
+		// Lock before writing to the map as it has multiple readers
+		developerInfoCacheLock.Lock()
+		defer developerInfoCacheLock.Unlock()
 		for rows.Next() {
 			rows.Scan(&tenantId,&apiKey,&apiProduct, &developerApp, &developer, &developerEmail)
 
@@ -74,6 +84,9 @@ func getTenantForScope(scopeuuid string) (tenant, dbError) {
 			errorCode := "UNKNOWN_SCOPE"
 			return tenant{}, dbError{errorCode, reason}
 		} else {
+			// acquire a read lock as this cache has 1 writer as well
+			tenantCache.RLock()
+			defer tenantCache.RUnlock()
 			return tenantCache[scopeuuid], dbError{}
 		}
 	} else {
@@ -100,7 +113,7 @@ func getTenantForScope(scopeuuid string) (tenant, dbError) {
 
 		return tenant{Org: org, Env:env, TenantId: tenantId}, dbError{}
 	}
-	// TODO: local testing
+	//// TODO: local testing
 	//return tenant{Org: "testorg", Env:"testenv", TenantId: "tenantid"}, dbError{}
 }
 
@@ -112,6 +125,9 @@ func getDeveloperInfo(tenantId string, apiKey string) developerInfo {
 			log.Debugf("No data found for for tenantId = %s and apiKey = %s", tenantId, apiKey)
 			return developerInfo{}
 		} else {
+			// acquire a read lock as this cache has 1 writer as well
+			developerInfoCacheLock.RLock()
+			defer developerInfoCacheLock.RUnlock()
 			return developerInfoCache[keyForMap]
 		}
 	} else {
@@ -123,8 +139,8 @@ func getDeveloperInfo(tenantId string, apiKey string) developerInfo {
 			"INNER JOIN API_PRODUCT as ap ON ap.id = mp.apiprdt_id " +
 			"INNER JOIN APP AS a ON a.id = mp.app_id " +
 			"INNER JOIN DEVELOPER as d ON d.id = a.developer_id " +
-			"where mp.tenant_id = \"" + tenantId + "\" and mp.appcred_id = \"" + apiKey + "\";"
-		error := db.QueryRow(sSql).Scan(&apiProduct, &developerApp, &developer, &developerEmail)
+			"where mp.tenant_id = ? and mp.appcred_id = ?;"
+		error := db.QueryRow(sSql,tenantId, apiKey).Scan(&apiProduct, &developerApp, &developer, &developerEmail)
 
 		switch {
 		case error == sql.ErrNoRows:

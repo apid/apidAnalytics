@@ -19,9 +19,9 @@ const recoveredTS  = "~recoveredTS~"
 
 func initCrashRecovery() {
 	if crashRecoveryNeeded() {
-		timer := time.NewTimer(time.Second * crashRecoveryDelay)
+		timer := time.After(time.Second * crashRecoveryDelay)
 		go func() {
-			<- timer.C
+			<- timer
 			performRecovery()
 		}()
 	}

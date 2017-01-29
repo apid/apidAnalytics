@@ -25,6 +25,9 @@ const (
 	analyticsUploadInterval        = "apidanalytics_upload_interval" // config in seconds
 	analyticsUploadIntervalDefault = "5"
 
+	analyticsBufferChannelSize  = "apidanalytics_buffer_channel_size"
+	analyticsBufferChannelSizeDefault = 10 // number of slots
+
 	uapServerBase = "apidanalytics_uap_server_base" // config
 
 	useCaching = "apidanalytics_use_caching"
@@ -80,7 +83,8 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 	}
 
 	// localTesting
-	config.SetDefault(uapServerBase,"http://localhost:9010")
+	//config.SetDefault(uapServerBase,"http://localhost:9010")
+	//config.SetDefault("apigeesync_apid_instance_id","fesgG-3525-SFAG")
 
 	for _, key := range []string{uapServerBase} {
 		if !config.IsSet(key) {
@@ -103,6 +107,8 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 	initCrashRecovery()
 
 	initUploadManager()
+
+	initBufferingManager()
 
 	initAPI(services)
 	log.Debug("end init for apidAnalytics plugin")
@@ -136,6 +142,9 @@ func setConfig(services apid.Services) error {
 
 	// set default config for upload interval
 	config.SetDefault(analyticsUploadInterval, analyticsUploadIntervalDefault)
+
+	// set default config for internal buffer size
+	config.SetDefault(analyticsBufferChannelSize, analyticsBufferChannelSizeDefault)
 
 	return nil
 }

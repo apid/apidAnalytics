@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"io"
-	"io/ioutil"
 	"strings"
 	"compress/gzip"
 )
@@ -15,6 +14,11 @@ type developerInfo struct {
 	DeveloperApp	string
 	DeveloperEmail	string
 	Developer	string
+}
+
+type axRecords struct {
+	Tenant tenant
+	Records []interface{}
 }
 
 func processPayload(tenant tenant, scopeuuid string,  r *http.Request) errResponse {
@@ -38,33 +42,35 @@ func processPayload(tenant tenant, scopeuuid string,  r *http.Request) errRespon
 		reader = r.Body
 	}
 
-	body, _ := ioutil.ReadAll(reader)
-	errMessage := validateEnrichPublish(tenant, scopeuuid,  body)
+	errMessage := validateEnrichPublish(tenant, scopeuuid, reader)
 	if errMessage.ErrorCode != "" {
 		return errMessage
 	}
 	return errResponse{}
 }
 
-func validateEnrichPublish(tenant tenant, scopeuuid string, body []byte) errResponse {
+func validateEnrichPublish(tenant tenant, scopeuuid string, reader io.Reader) errResponse {
 	var raw map[string]interface{}
-	err := json.Unmarshal(body, &raw)
-	if err != nil {
+	dec := json.NewDecoder(reader)
+	dec.UseNumber()
+
+	if err := dec.Decode(&raw); err != nil {
 		return errResponse{"BAD_DATA", "Not a valid JSON payload"}
 	}
+
 	if records := raw["records"]; records != nil {
 		for _, eachRecord := range records.([]interface{}) {
 			recordMap := eachRecord.(map[string]interface{})
 			valid, err := validate(recordMap)
 			if valid {
 				enrich(recordMap, scopeuuid, tenant)
-				// TODO: Remove log
-				log.Debugf("Raw records : %v ", recordMap)
 			} else {
 				return err				// Even if there is one bad record, then reject entire batch
 			}
 		}
-		publishToChannel(records.([]interface{}))
+		// publish batch of records to channel (blocking call)
+		axRecords := axRecords{Tenant: tenant, Records: records.([]interface{})}
+		internalBuffer <- axRecords
 	} else {
 		return errResponse{"NO_RECORDS", "No analytics records in the payload"}
 	}
@@ -82,7 +88,7 @@ func validate(recordMap map[string]interface{}) (bool, errResponse) {
 	crst, exists1 := recordMap["client_received_start_timestamp"]
 	cret, exists2 := recordMap["client_received_end_timestamp"]
 	if exists1 && exists2 {
-		if crst.(int64) > cret.(int64) {
+		if crst.(json.Number) > cret.(json.Number) {
 			return false, errResponse{"BAD_DATA", "client_received_start_timestamp > client_received_end_timestamp"}
 		}
 	}
@@ -105,7 +111,6 @@ func enrich(recordMap map[string]interface{}, scopeuuid string, tenant tenant) {
 	if exists {
 		apiKey := apiKey.(string)
 		devInfo := getDeveloperInfo(tenant.TenantId, apiKey)
-		// TODO: Remove log
 		_, exists := recordMap["api_product"]
 		if !exists {
 			recordMap["api_product"] = devInfo.ApiProduct
@@ -123,12 +128,6 @@ func enrich(recordMap map[string]interface{}, scopeuuid string, tenant tenant) {
 			recordMap["developer"] = devInfo.Developer
 		}
 	}
-}
-
-func publishToChannel(records []interface{})  {
-	// TODO: add the batch of records to a channel for consumption
-	log.Debugf("records on channel : %v", records)
-	return
 }
 
 func writeError(w http.ResponseWriter, status int, code string, reason string) {

@@ -73,7 +73,7 @@ definitions:
       	"client_received_end_timestamp": 1462850097580,
       	"client_sent_start_timestamp": 1462850097894,
         "request_path" : "/oauth/oauthv2/auth_code/",
-	      "request_uri": "/oauth/oauthv2/auth_code/?response_type=code&redirect_url=http%3A%2F%2Fexample.com&client_id=A1h6yYAVeADnEKji8M37zCSn6olcmQDB",
+        "request_uri": "/oauth/oauthv2/auth_code/?response_type=code&redirect_url=http%3A%2F%2Fexample.com&client_id=A1h6yYAVeADnEKji8M37zCSn6olcmQDB",
         "useragent" : "Chrome",
         "target" : "target_name",
         "target_received_end_timestamp": 1462850097800,
