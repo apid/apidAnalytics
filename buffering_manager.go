@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"fmt"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 )
 
@@ -119,7 +118,7 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 func getRandomHex() string {
 	buff := make([]byte, 2)
 	rand.Read(buff)
-	return base64.URLEncoding.EncodeToString(buff)
+	return fmt.Sprintf("%x", buff)
 }
 
 func createGzipFile(s string) (fileWriter, error) {
