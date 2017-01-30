@@ -57,17 +57,12 @@ func uploadFile(tenant, relativeFilePath, completeFilePath string) (bool, error)
 	if (err != nil) {
 		return false, err
 	} else {
-		log.Debugf("signed URL : %s", signedUrl)
-		return true, nil
-		//return uploadFileToDatastore(completeFilePath, signedUrl)
+		return uploadFileToDatastore(completeFilePath, signedUrl)
 	}
 }
 
 func getSignedUrl(tenant, relativeFilePath, completeFilePath string) (string, error) {
-	//uapCollectionUrl := config.GetString(uapServerBase) + "/analytics"
-
-	// localTesting
-	uapCollectionUrl := config.GetString(uapServerBase) + "/v1/upload/location"
+	uapCollectionUrl := config.GetString(uapServerBase) + "/analytics"
 
 	req, err := http.NewRequest("GET", uapCollectionUrl, nil)
 	if err != nil {
@@ -81,8 +76,8 @@ func getSignedUrl(tenant, relativeFilePath, completeFilePath string) (string, er
 	q.Add("dataset", "api")
 
 	q.Add("tenant", tenant)
-	q.Add("relativeFilePath", relativeFilePath)
-	q.Add("contentType", "application/x-gzip")
+	q.Add("relative_file_path", relativeFilePath)
+	q.Add("file_content_type", "application/x-gzip")
 	req.URL.RawQuery = q.Encode()
 
 	addHeaders(req)
