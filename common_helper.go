@@ -15,10 +15,7 @@ var developerInfoCacheLock = sync.RWMutex{}
 func createTenantCache() error {
 	tenantCache = make(map[string]tenant)
 	var org, env, tenantId, id string
-	db, err := data.DB()
-	if err != nil {
-		return fmt.Errorf("DB not initalized")
-	}
+	db := getDB()
 
 	rows, error := db.Query("SELECT env, org, scope, id FROM DATA_SCOPE")
 
@@ -113,7 +110,7 @@ func getTenantForScope(scopeuuid string) (tenant, dbError) {
 
 		return tenant{Org: org, Env:env, TenantId: tenantId}, dbError{}
 	}
-	//// TODO: local testing
+	// TODO: localTesting
 	//return tenant{Org: "testorg", Env:"testenv", TenantId: "tenantid"}, dbError{}
 }
 
@@ -158,7 +155,7 @@ func getDeveloperInfo(tenantId string, apiKey string) developerInfo {
 
 		return developerInfo{ApiProduct: apiPrd, DeveloperApp: devApp, DeveloperEmail: devEmail, Developer: dev}
 	}
-	// TODO: local testing
+	// TODO: localTesting
 	// return developerInfo{ApiProduct: "testproduct", DeveloperApp: "testapp", DeveloperEmail: "testdeveloper@test.com", Developer: "testdeveloper"}
 
 }

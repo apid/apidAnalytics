@@ -78,6 +78,7 @@ func processChange(changes *common.ChangeList) {
 					ele.Get("org", &org)
 					ele.Get("env", &env)
 					tenantCache[scopeuuid] = tenant{Org: org, Env: env, TenantId: tenantid}
+					log.Debugf("refreshed local tenantCache. Added tenant: %s", tenantid)
 				}
 			case common.Delete:
 				rows = append(rows, payload.NewRow)
@@ -92,7 +93,7 @@ func processChange(changes *common.ChangeList) {
 		case "kms.developer", "kms.app", "kms.api_product", "kms.app_credential_apiproduct_mapper":
 			// any change in any of the above tables should result in cache refresh
 			createDeveloperInfoCache()
-			log.Debug("refreshed local developerInfoCache")
+			log.Debug("refresh local developerInfoCache")
 		}
 	}
 }

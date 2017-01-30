@@ -24,14 +24,13 @@ var client *http.Client = &http.Client{
           }
 
 func addHeaders(req *http.Request) {
+	token = config.GetString("apigeesync_bearer_token")
 	req.Header.Add("Authorization", "Bearer " + token)
 }
 
 func uploadDir(dir os.FileInfo) bool {
 	tenant, timestamp := splitDirName(dir.Name())
 	dateTimePartition := getDateFromDirTimestamp(timestamp)
-	// TODO: Remove
-	log.Debugf("tenant: %s | timestamp %s", tenant, timestamp)
 
 	completePath := filepath.Join(localAnalyticsStagingDir, dir.Name())
 	files, _ := ioutil.ReadDir(completePath)
@@ -59,7 +58,8 @@ func uploadFile(tenant, relativeFilePath, completeFilePath string) (bool, error)
 		return false, err
 	} else {
 		log.Debugf("signed URL : %s", signedUrl)
-		return uploadFileToDatastore(completeFilePath, signedUrl)
+		return true, nil
+		//return uploadFileToDatastore(completeFilePath, signedUrl)
 	}
 }
 
@@ -85,8 +85,7 @@ func getSignedUrl(tenant, relativeFilePath, completeFilePath string) (string, er
 	q.Add("contentType", "application/x-gzip")
 	req.URL.RawQuery = q.Encode()
 
-	// TODO: get bearer token and add as header
-	//addHeaders(req)
+	addHeaders(req)
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err

@@ -15,7 +15,6 @@ func initUploadManager() {
 
 	retriesMap = make(map[string]int)
 
-	// TODO: add a way to make sure that this go routine is always running
 	go func() {
 		ticker := time.NewTicker(time.Second * config.GetDuration(analyticsUploadInterval))
 		log.Debugf("Intialized upload manager to check for staging directory")

@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 )
 
-// TODO: figure out how to get these from a apid config file vs constant values
 const (
 	configAnalyticsBasePath  = "apidanalytics_base_path" // config
 	analyticsBasePathDefault = "/analytics"
