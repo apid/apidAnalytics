@@ -11,13 +11,18 @@ import (
 	"encoding/json"
 )
 
+const fileExtension = ".txt.gz";
+
+// Channel where analytics records are buffered before being dumped to a file as write to file should not performed in the Http Thread
 var internalBuffer chan axRecords
+// Channel where close bucket event is published i.e. when a bucket is ready to be closed based on collection interval
 var closeBucketEvent chan bucket
+// Map from timestampt to bucket
 var bucketMap map[int64]bucket
 
 type bucket struct {
 	DirName string
-	// We need file handle, writter pointer to close the file
+	// We need file handle and writer to close the file
 	FileWriter fileWriter
 }
 
@@ -39,7 +44,7 @@ func initBufferingManager() {
 			records := <-internalBuffer
 			err := save(records)
 			if err != nil {
-				log.Errorf("Could not save %d messages to file. %v", len(records.Records), err)
+				log.Errorf("Could not save %d messages to file due to: %v", len(records.Records), err)
 			}
 		}
 	}()
@@ -48,21 +53,23 @@ func initBufferingManager() {
 	go func() {
 		for  {
 			bucket := <- closeBucketEvent
-			log.Debugf("Closing bucket %s", bucket.DirName)
+			log.Debugf("Close Event received for bucket: %s", bucket.DirName)
 
 			// close open file
 			closeGzipFile(bucket.FileWriter)
 
 			dirToBeClosed := filepath.Join(localAnalyticsTempDir, bucket.DirName)
 			stagingPath := filepath.Join(localAnalyticsStagingDir, bucket.DirName)
+			// close files in tmp folder and move directory to staging to indicate its ready for upload
 			err := os.Rename(dirToBeClosed, stagingPath)
 			if err != nil {
-				log.Errorf("Cannot move directory :%s to staging folder", bucket.DirName)
+				log.Errorf("Cannot move directory '%s' from tmp to staging folder", bucket.DirName)
 			}
 		}
 	}()
 }
 
+// Save records to correct file based on what timestamp data is being collected for
 func save(records axRecords) (error) {
 	bucket, err := getBucketForTimestamp(time.Now(), records.Tenant)
 	if (err != nil ) {
@@ -74,7 +81,7 @@ func save(records axRecords) (error) {
 
 
 func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
-	// first based on current timestamp, determine the timestamp bucket
+	// first based on current timestamp and collection interval, determine the timestamp of the bucket
 	ts :=  now.Unix() / int64(config.GetInt(analyticsCollectionInterval)) * int64(config.GetInt(analyticsCollectionInterval))
 	_, exists := bucketMap[ts]
 	if exists {
@@ -82,6 +89,7 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 	} else {
 		timestamp := time.Unix(ts, 0).Format(timestampLayout)
 
+		// endtimestamp of bucket = starttimestamp + collectionInterval
 		endTime := time.Unix(ts + int64(config.GetInt(analyticsCollectionInterval)), 0)
 		endtimestamp := endTime.Format(timestampLayout)
 
@@ -90,11 +98,12 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 		// create dir
 		err := os.Mkdir(newPath, os.ModePerm)
 		if err != nil {
-			return bucket{}, fmt.Errorf("Cannot create directory : %s to buffer messages due to %v:", dirName, err)
+			return bucket{}, fmt.Errorf("Cannot create directory '%s' to buffer messages '%v'", dirName, err)
 		}
 
 		// create file for writing
-		fileName := getRandomHex() + "_" + timestamp + "." + endtimestamp + "_" + config.GetString("apigeesync_apid_instance_id") + "_writer_0.txt.gz"
+		// Format: <4DigitRandomHex>_<TSStart>.<TSEnd>_<APIDINSTANCEUUID>_writer_0.txt.gz
+		fileName := getRandomHex() + "_" + timestamp + "." + endtimestamp + "_" + config.GetString("apigeesync_apid_instance_id") + "_writer_0" + fileExtension
 		completeFilePath := filepath.Join(newPath, fileName)
 		fw, err := createGzipFile(completeFilePath)
 		if err != nil {
@@ -104,7 +113,7 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 		newBucket := bucket{DirName: dirName, FileWriter: fw}
 		bucketMap[ts] = newBucket
 
-		//Send event to close directory after endTime
+		//Send event to close directory after endTime + 5 seconds to make sure all buffers are flushed to file
 		timer := time.After(endTime.Sub(time.Now()) + time.Second * 5)
 		go func() {
 			<- timer
@@ -114,6 +123,7 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 	}
 }
 
+// 4 digit Hex is prefixed to each filename to improve how s3 partitions the files being uploaded
 func getRandomHex() string {
 	buff := make([]byte, 2)
 	rand.Read(buff)
@@ -123,7 +133,7 @@ func getRandomHex() string {
 func createGzipFile(s string) (fileWriter, error) {
 	file, err := os.OpenFile(s, os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
-		return fileWriter{},fmt.Errorf("Cannot create file : %s to buffer messages due to: %v", s, err)
+		return fileWriter{},fmt.Errorf("Cannot create file '%s' to buffer messages '%v'", s, err)
 	}
 	gw := gzip.NewWriter(file)
 	bw := bufio.NewWriter(gw)
@@ -131,21 +141,22 @@ func createGzipFile(s string) (fileWriter, error) {
 }
 
 func writeGzipFile(fw fileWriter, records []interface{}) {
+	// write each record as a new line to the bufferedWriter
 	for _, eachRecord := range records {
 		s, _ := json.Marshal(eachRecord)
 		_, err := (fw.bw).WriteString(string(s))
 		if err != nil {
-			log.Errorf("Write to file failed due to: %v", err)
+			log.Errorf("Write to file failed '%v'", err)
 		}
 		(fw.bw).WriteString("\n")
 	}
+	// Flush entire batch of records to file vs each message
 	fw.bw.Flush()
 	fw.gw.Flush()
 }
 
 func closeGzipFile(fw fileWriter) {
 	fw.bw.Flush()
-	// Close the gzip first.
 	fw.gw.Close()
 	fw.file.Close()
 }

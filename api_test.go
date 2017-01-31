@@ -11,11 +11,8 @@ import (
 
 // BeforeSuite setup and AfterSuite cleanup is in apidAnalytics_suite_test.go
 var _ = Describe("testing saveAnalyticsRecord() directly", func() {
-
 	Context("valid scopeuuid", func() {
-
 		It("should successfully return", func() {
-
 			uri, err := url.Parse(testServer.URL)
 			uri.Path = analyticsBasePath
 
@@ -32,7 +29,6 @@ var _ = Describe("testing saveAnalyticsRecord() directly", func() {
 	})
 
 	Context("invalid scopeuuid", func() {
-
 		It("should return bad request", func() {
 			uri, err := url.Parse(testServer.URL)
 			uri.Path = analyticsBasePath

@@ -11,16 +11,12 @@ import (
 	"time"
 )
 
-const (
-	maxRetries = 3
-	retryFailedDirBatchSize = 10
-	timestampLayout = "20060102150405"				// same as yyyyMMddHHmmss
-)
+const timestampLayout = "20060102150405"				// same as yyyyMMddHHmmss
 
 var token string
 
 var client *http.Client = &http.Client{
-		Timeout: time.Duration(60 * time.Second),		// default timeout of 60 seconds while connecting to s3/GCS
+		Timeout: time.Duration(60 * time.Second),		//set default timeout of 60 seconds while connecting to s3/GCS
           }
 
 func addHeaders(req *http.Request) {
@@ -29,8 +25,9 @@ func addHeaders(req *http.Request) {
 }
 
 func uploadDir(dir os.FileInfo) bool {
+	// Eg. org~env~20160101224500
 	tenant, timestamp := splitDirName(dir.Name())
-	dateTimePartition := getDateFromDirTimestamp(timestamp)
+	dateTimePartition := getDateFromDirTimestamp(timestamp) 	//date=2016-01-01/time=22-45
 
 	completePath := filepath.Join(localAnalyticsStagingDir, dir.Name())
 	files, _ := ioutil.ReadDir(completePath)
@@ -42,18 +39,18 @@ func uploadDir(dir os.FileInfo) bool {
 		relativeFilePath := dateTimePartition + "/" + file.Name();
 		status, error = uploadFile(tenant,relativeFilePath, completeFilePath)
 		if error != nil {
-			log.Errorf("Upload failed due to : %s", error.Error())
+			log.Errorf("Upload failed due to: %v", error)
 			break
 		} else {
 			os.Remove(completeFilePath)
-			log.Debugf("Deleted file after successful upload : %s", file.Name())
+			log.Debugf("Deleted file '%s' after successful upload", file.Name())
 		}
 	}
 	return status
 }
 
 func uploadFile(tenant, relativeFilePath, completeFilePath string) (bool, error) {
-	signedUrl, err := getSignedUrl(tenant, relativeFilePath, completeFilePath)
+	signedUrl, err := getSignedUrl(tenant, relativeFilePath)
 	if (err != nil) {
 		return false, err
 	} else {
@@ -61,7 +58,7 @@ func uploadFile(tenant, relativeFilePath, completeFilePath string) (bool, error)
 	}
 }
 
-func getSignedUrl(tenant, relativeFilePath, completeFilePath string) (string, error) {
+func getSignedUrl(tenant, relativeFilePath string) (string, error) {
 	uapCollectionUrl := config.GetString(uapServerBase) + "/analytics"
 
 	req, err := http.NewRequest("GET", uapCollectionUrl, nil)
@@ -71,15 +68,14 @@ func getSignedUrl(tenant, relativeFilePath, completeFilePath string) (string, er
 
 	q := req.URL.Query()
 
-	// localTesting
-	q.Add("repo", "edge")
-	q.Add("dataset", "api")
-
+	// eg. edgexfeb1~test
 	q.Add("tenant", tenant)
+	// eg. date=2017-01-30/time=16-32/1069_20170130163200.20170130163400_218e3d99-efaf-4a7b-b3f2-5e4b00c023b7_writer_0.txt.gz
 	q.Add("relative_file_path", relativeFilePath)
 	q.Add("file_content_type", "application/x-gzip")
 	req.URL.RawQuery = q.Encode()
 
+	// Add Bearer Token to each request
 	addHeaders(req)
 	resp, err := client.Do(req)
 	if err != nil {
@@ -94,12 +90,12 @@ func getSignedUrl(tenant, relativeFilePath, completeFilePath string) (string, er
 		signedURL :=  body["url"]
 		return signedURL.(string), nil
 	} else {
-		return "", fmt.Errorf("Error while getting signed URL: %s",resp.Status)
+		return "", fmt.Errorf("Error while getting signed URL '%v'",resp.Status)
 	}
 }
 
 func uploadFileToDatastore(completeFilePath, signedUrl string) (bool, error) {
-	// read gzip file that needs to be uploaded
+	// open gzip file that needs to be uploaded
 	file, err := os.Open(completeFilePath)
 	if err != nil {
 		return false, err
@@ -108,7 +104,7 @@ func uploadFileToDatastore(completeFilePath, signedUrl string) (bool, error) {
 
 	req, err := http.NewRequest("PUT", signedUrl, file)
 	if err != nil {
-		return false, fmt.Errorf("Parsing URL failed due to %v", err)
+		return false, fmt.Errorf("Parsing URL failed '%v'", err)
 	}
 
 	req.Header.Set("Expect", "100-continue")
@@ -116,7 +112,7 @@ func uploadFileToDatastore(completeFilePath, signedUrl string) (bool, error) {
 
 	fileStats, err := file.Stat()
 	if err != nil {
-		return false, fmt.Errorf("Could not get content length for file: %v", err)
+		return false, fmt.Errorf("Could not get content length for file '%v'", err)
 	}
 	req.ContentLength = fileStats.Size()
 
@@ -129,10 +125,11 @@ func uploadFileToDatastore(completeFilePath, signedUrl string) (bool, error) {
 	if(resp.StatusCode == 200) {
 		return true, nil
 	} else {
-		return false,fmt.Errorf("Final Datastore (S3/GCS) returned Error: %v ", resp.Status)
+		return false,fmt.Errorf("Final Datastore (S3/GCS)returned Error '%v'", resp.Status)
 	}
 }
 
+// Extract tenant and timestamp from directory Name
 func splitDirName(dirName string) (string, string){
 	s := strings.Split(dirName, "~")
 	tenant := s[0]+"~"+s[1]
@@ -140,7 +137,7 @@ func splitDirName(dirName string) (string, string){
 	return  tenant, timestamp
 }
 
-// files are uploaded to S3 under specific partition and that key needs to be generated from the plugin
+// files are uploaded to S3 under specific date time partition and that key needs to be generated from the plugin
 // eg. <...prefix generated by uap collection service...>/date=2016-01-02/time=15-45/filename.txt.gz
 func getDateFromDirTimestamp(timestamp string) (string){
 	dateTime, _ := time.Parse(timestampLayout, timestamp)

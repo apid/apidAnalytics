@@ -1,18 +1,17 @@
 package apidAnalytics
+
 import (
 	"github.com/30x/apid"
 	"github.com/apigee-labs/transicator/common"
 )
 
-type handler struct {
-}
+type handler struct {}
 
 func (h *handler) String() string {
-	return "apidAnalytics"
+	return "apigeeAnalytics"
 }
 
 func (h *handler) Handle(e apid.Event) {
-
 	snapData, ok := e.(*common.Snapshot)
 	if ok {
 		processSnapshot(snapData)
@@ -47,17 +46,15 @@ func processSnapshot(snapshot *common.Snapshot) {
 		if err != nil {
 			log.Error(err)
 		} else {
-			log.Debug("Created a local cache for developer and app information")
+			log.Debug("Created a local cache for developer information")
 		}
 	} else {
-		log.Debug("Will not be caching any info and make a DB call for every analytics msg")
+		log.Info("Will not be caching any developer info and make a DB call for every analytics msg")
 	}
-
 	return
 }
 
 func processChange(changes *common.ChangeList) {
-
 	log.Debugf("apigeeSyncEvent: %d changes", len(changes.Changes))
 	var rows []common.Row
 
@@ -78,22 +75,24 @@ func processChange(changes *common.ChangeList) {
 					ele.Get("org", &org)
 					ele.Get("env", &env)
 					tenantCache[scopeuuid] = tenant{Org: org, Env: env, TenantId: tenantid}
-					log.Debugf("refreshed local tenantCache. Added tenant: %s", tenantid)
+					log.Debugf("Refreshed local tenantCache. Added scope: %s", scopeuuid)
 				}
 			case common.Delete:
 				rows = append(rows, payload.NewRow)
+				// Lock before writing to the map as it has multiple readers
 				tenantCachelock.Lock()
 				defer tenantCachelock.Unlock()
 				for _, ele := range rows {
 					var scopeuuid string
 					ele.Get("id", &scopeuuid)
 					delete(tenantCache, scopeuuid)
+					log.Debugf("Refreshed local tenantCache. Deleted scope: %s", scopeuuid)
 				}
 			}
 		case "kms.developer", "kms.app", "kms.api_product", "kms.app_credential_apiproduct_mapper":
 			// any change in any of the above tables should result in cache refresh
 			createDeveloperInfoCache()
-			log.Debug("refresh local developerInfoCache")
+			log.Debug("Refresh local developerInfoCache")
 		}
 	}
 }

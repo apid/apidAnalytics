@@ -9,6 +9,10 @@ import (
 )
 
 
+/*
+Implements all the helper methods needed to process the POST /analytics payload and send it to the internal buffer channel
+*/
+
 type developerInfo struct {
 	ApiProduct	string
 	DeveloperApp	string
@@ -18,14 +22,20 @@ type developerInfo struct {
 
 type axRecords struct {
 	Tenant tenant
-	Records []interface{}
+	Records []interface{}		// Records is an array of multiple analytics records
+}
+
+type tenant struct {
+	Org string
+	Env string
+	TenantId string
 }
 
 func processPayload(tenant tenant, scopeuuid string,  r *http.Request) errResponse {
 	var gzipEncoded bool
 	if r.Header.Get("Content-Encoding") != "" {
 		if !strings.EqualFold(r.Header.Get("Content-Encoding"),"gzip") {
-			return errResponse{"UNSUPPORTED_CONTENT_ENCODING", "Only supported content encoding is gzip"}
+			return errResponse{ErrorCode:"UNSUPPORTED_CONTENT_ENCODING", Reason:"Only supported content encoding is gzip"}
 		}  else {
 			gzipEncoded = true
 		}
@@ -36,7 +46,7 @@ func processPayload(tenant tenant, scopeuuid string,  r *http.Request) errRespon
 	if gzipEncoded {
 		reader, err = gzip.NewReader(r.Body)			// reader for gzip encoded data
 		if err != nil {
-			return errResponse{"BAD_DATA", "Gzip data cannot be read"}
+			return errResponse{ErrorCode:"BAD_DATA", Reason:"Gzip Encoded data cannot be read"}
 		}
 	} else {
 		reader = r.Body
@@ -51,14 +61,15 @@ func processPayload(tenant tenant, scopeuuid string,  r *http.Request) errRespon
 
 func validateEnrichPublish(tenant tenant, scopeuuid string, reader io.Reader) errResponse {
 	var raw map[string]interface{}
-	dec := json.NewDecoder(reader)
-	dec.UseNumber()
+	decoder := json.NewDecoder(reader)		// Decode payload to JSON data
+	decoder.UseNumber()
 
-	if err := dec.Decode(&raw); err != nil {
-		return errResponse{"BAD_DATA", "Not a valid JSON payload"}
+	if err := decoder.Decode(&raw); err != nil {
+		return errResponse{ErrorCode:"BAD_DATA", Reason:"Not a valid JSON payload"}
 	}
 
 	if records := raw["records"]; records != nil {
+		// Iterate through each record to validate and enrich it
 		for _, eachRecord := range records.([]interface{}) {
 			recordMap := eachRecord.(map[string]interface{})
 			valid, err := validate(recordMap)
@@ -68,20 +79,25 @@ func validateEnrichPublish(tenant tenant, scopeuuid string, reader io.Reader) er
 				return err				// Even if there is one bad record, then reject entire batch
 			}
 		}
-		// publish batch of records to channel (blocking call)
 		axRecords := axRecords{Tenant: tenant, Records: records.([]interface{})}
+		// publish batch of records to channel (blocking call)
 		internalBuffer <- axRecords
 	} else {
-		return errResponse{"NO_RECORDS", "No analytics records in the payload"}
+		return errResponse{ErrorCode:"NO_RECORDS", Reason:"No analytics records in the payload"}
 	}
 	return errResponse{}
 }
 
+/*
+Does basic validation on each analytics message
+1. client_received_start_timestamp should exist
+2. if client_received_end_timestamp exists then it should be > client_received_start_timestamp
+*/
 func validate(recordMap map[string]interface{}) (bool, errResponse) {
 	elems := []string{"client_received_start_timestamp"}
 	for _, elem := range elems {
 		if recordMap[elem] == nil {
-			return false, errResponse{"MISSING_FIELD", "Missing field: " + elem}
+			return false, errResponse{ErrorCode:"MISSING_FIELD", Reason:"Missing Required field: " + elem}
 		}
 	}
 
@@ -89,12 +105,16 @@ func validate(recordMap map[string]interface{}) (bool, errResponse) {
 	cret, exists2 := recordMap["client_received_end_timestamp"]
 	if exists1 && exists2 {
 		if crst.(json.Number) > cret.(json.Number) {
-			return false, errResponse{"BAD_DATA", "client_received_start_timestamp > client_received_end_timestamp"}
+			return false, errResponse{ErrorCode:"BAD_DATA", Reason:"client_received_start_timestamp > client_received_end_timestamp"}
 		}
 	}
 	return true, errResponse{}
 }
 
+/*
+Enrich each record by adding org and env fields
+It also finds add developer related information based on the apiKey
+*/
 func enrich(recordMap map[string]interface{}, scopeuuid string, tenant tenant) {
 	org, orgExists := recordMap["organization"]
 	if !orgExists || org.(string) == "" {

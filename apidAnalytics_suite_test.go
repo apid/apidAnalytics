@@ -34,7 +34,8 @@ var _ = BeforeSuite(func() {
 
 	config.Set("data_path", testTempDir)
 	config.Set(uapServerBase, "http://localhost:9000") // dummy value
-	config.Set(useCaching, false)
+	config.Set("apigeesync_apid_instance_id","abcdefgh-ijkl-mnop-qrst-uvwxyz123456") // dummy value
+	config.Set(useCaching, true)
 
 	db, err := apid.Data().DB()
 	Expect(err).NotTo(HaveOccurred())
@@ -43,6 +44,10 @@ var _ = BeforeSuite(func() {
 	createTables(db)
 	insertTestData(db)
 	apid.InitializePlugins()
+
+	// Create cache else its created in listener.go when a snapshot is received
+	createTenantCache()
+	createDeveloperInfoCache()
 
 	testServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == analyticsBasePathDefault {

@@ -18,12 +18,6 @@ type dbError struct {
 	Reason    string `json:"reason"`
 }
 
-type tenant struct {
-	Org string
-	Env string
-	TenantId string
-}
-
 func initAPI(services apid.Services) {
 	log.Debug("initialized API's exposed by apidAnalytics plugin")
 	analyticsBasePath = config.GetString(configAnalyticsBasePath)
@@ -34,13 +28,7 @@ func saveAnalyticsRecord(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-	db, _ := data.DB()			// When database isnt initialized
-	if db == nil {
-		writeError(w, http.StatusInternalServerError,"INTERNAL_SERVER_ERROR","Service is not initialized completely")
-		return
-	}
-
-	db = getDB()				// When snapshot isnt processed
+	db := getDB()				// When database isnt initialized
 	if db == nil {
 		writeError(w, http.StatusInternalServerError,"INTERNAL_SERVER_ERROR","Service is not initialized completely")
 		return
