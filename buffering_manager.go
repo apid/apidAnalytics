@@ -114,7 +114,6 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 	}
 }
 
-//TODO: implement 4 digit hext method
 func getRandomHex() string {
 	buff := make([]byte, 2)
 	rand.Read(buff)
@@ -141,6 +140,7 @@ func writeGzipFile(fw fileWriter, records []interface{}) {
 		(fw.bw).WriteString("\n")
 	}
 	fw.bw.Flush()
+	fw.gw.Flush()
 }
 
 func closeGzipFile(fw fileWriter) {

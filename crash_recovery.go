@@ -134,23 +134,23 @@ func copyPartialFile(completeOrigFilePath, recoveredFilePath string) {
 	scanner := bufio.NewScanner(gzReader)
 
 	// Create new file to copy complete records from partial file and upload only a complete file
-	recoveredFile, err := os.Create(recoveredFilePath)
+	recoveredFile, err := os.OpenFile(recoveredFilePath, os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		log.Errorf("Cannot create recovered file: %s", recoveredFilePath)
 		return
 	}
 	defer recoveredFile.Close()
 
-	bufWriter := bufio.NewWriter(recoveredFile)
-	defer bufWriter.Flush()
-
-	gzWriter := gzip.NewWriter(bufWriter)
+	gzWriter := gzip.NewWriter(recoveredFile)
 	defer gzWriter.Close()
 
-	for scanner.Scan() {
-		gzWriter.Write(scanner.Bytes())
-	}
+	bufWriter := bufio.NewWriter(gzWriter)
+	defer bufWriter.Flush()
 
+	for scanner.Scan() {
+		bufWriter.Write(scanner.Bytes())
+		bufWriter.WriteString("\n")
+	}
 	if err := scanner.Err(); err != nil {
 		log.Errorf("Error while scanning partial file: %v", err)
 		return
