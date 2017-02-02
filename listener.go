@@ -79,7 +79,7 @@ func processChange(changes *common.ChangeList) {
 						log.Debugf("Refreshed local tenantCache. Added scope: %s", scopeuuid)
 					}
 				case common.Delete:
-					rows = append(rows, payload.NewRow)
+					rows = append(rows, payload.OldRow)
 					// Lock before writing to the map as it has multiple readers
 					tenantCachelock.Lock()
 					defer tenantCachelock.Unlock()
