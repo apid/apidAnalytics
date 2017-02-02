@@ -5,7 +5,7 @@ import (
 	"github.com/apigee-labs/transicator/common"
 )
 
-type handler struct {}
+type handler struct{}
 
 func (h *handler) String() string {
 	return "apigeeAnalytics"
@@ -35,7 +35,7 @@ func processSnapshot(snapshot *common.Snapshot) {
 	}
 	setDB(db)
 
-	if (config.GetBool(useCaching)) {
+	if config.GetBool(useCaching) {
 		err = createTenantCache()
 		if err != nil {
 			log.Error(err)
@@ -55,7 +55,7 @@ func processSnapshot(snapshot *common.Snapshot) {
 }
 
 func processChange(changes *common.ChangeList) {
-	if (config.GetBool(useCaching)) {
+	if config.GetBool(useCaching) {
 		log.Debugf("apigeeSyncEvent: %d changes", len(changes.Changes))
 		var rows []common.Row
 

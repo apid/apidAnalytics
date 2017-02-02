@@ -1,22 +1,24 @@
 package apidAnalytics
 
 import (
-	"time"
-	"os"
 	"bufio"
 	"compress/gzip"
-	"path/filepath"
-	"fmt"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
 )
 
-const fileExtension = ".txt.gz";
+const fileExtension = ".txt.gz"
 
 // Channel where analytics records are buffered before being dumped to a file as write to file should not performed in the Http Thread
 var internalBuffer chan axRecords
+
 // Channel where close bucket event is published i.e. when a bucket is ready to be closed based on collection interval
 var closeBucketEvent chan bucket
+
 // Map from timestampt to bucket
 var bucketMap map[int64]bucket
 
@@ -28,19 +30,19 @@ type bucket struct {
 
 // This struct will store open file handle and writer to close the file
 type fileWriter struct {
-	file  *os.File
-	gw *gzip.Writer
-	bw *bufio.Writer
+	file *os.File
+	gw   *gzip.Writer
+	bw   *bufio.Writer
 }
 
 func initBufferingManager() {
 	internalBuffer = make(chan axRecords, config.GetInt(analyticsBufferChannelSize))
-	closeBucketEvent = make(chan  bucket)
+	closeBucketEvent = make(chan bucket)
 	bucketMap = make(map[int64]bucket)
 
 	// Keep polling the internal buffer for new messages
 	go func() {
-		for  {
+		for {
 			records := <-internalBuffer
 			err := save(records)
 			if err != nil {
@@ -51,8 +53,8 @@ func initBufferingManager() {
 
 	// Keep polling the closeEvent channel to see if bucket is ready to be closed
 	go func() {
-		for  {
-			bucket := <- closeBucketEvent
+		for {
+			bucket := <-closeBucketEvent
 			log.Debugf("Close Event received for bucket: %s", bucket.DirName)
 
 			// close open file
@@ -70,19 +72,18 @@ func initBufferingManager() {
 }
 
 // Save records to correct file based on what timestamp data is being collected for
-func save(records axRecords) (error) {
+func save(records axRecords) error {
 	bucket, err := getBucketForTimestamp(time.Now(), records.Tenant)
-	if (err != nil ) {
+	if err != nil {
 		return err
 	}
 	writeGzipFile(bucket.FileWriter, records.Records)
 	return nil
 }
 
-
 func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 	// first based on current timestamp and collection interval, determine the timestamp of the bucket
-	ts :=  now.Unix() / int64(config.GetInt(analyticsCollectionInterval)) * int64(config.GetInt(analyticsCollectionInterval))
+	ts := now.Unix() / int64(config.GetInt(analyticsCollectionInterval)) * int64(config.GetInt(analyticsCollectionInterval))
 	_, exists := bucketMap[ts]
 	if exists {
 		return bucketMap[ts], nil
@@ -90,7 +91,7 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 		timestamp := time.Unix(ts, 0).Format(timestampLayout)
 
 		// endtimestamp of bucket = starttimestamp + collectionInterval
-		endTime := time.Unix(ts + int64(config.GetInt(analyticsCollectionInterval)), 0)
+		endTime := time.Unix(ts+int64(config.GetInt(analyticsCollectionInterval)), 0)
 		endtimestamp := endTime.Format(timestampLayout)
 
 		dirName := tenant.Org + "~" + tenant.Env + "~" + timestamp
@@ -114,9 +115,9 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 		bucketMap[ts] = newBucket
 
 		//Send event to close directory after endTime + 5 seconds to make sure all buffers are flushed to file
-		timer := time.After(endTime.Sub(time.Now()) + time.Second * 5)
+		timer := time.After(endTime.Sub(time.Now()) + time.Second*5)
 		go func() {
-			<- timer
+			<-timer
 			closeBucketEvent <- newBucket
 		}()
 		return newBucket, nil
@@ -133,7 +134,7 @@ func getRandomHex() string {
 func createGzipFile(s string) (fileWriter, error) {
 	file, err := os.OpenFile(s, os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
-		return fileWriter{},fmt.Errorf("Cannot create file '%s' to buffer messages '%v'", s, err)
+		return fileWriter{}, fmt.Errorf("Cannot create file '%s' to buffer messages '%v'", s, err)
 	}
 	gw := gzip.NewWriter(file)
 	bw := bufio.NewWriter(gw)
@@ -160,4 +161,3 @@ func closeGzipFile(fw fileWriter) {
 	fw.gw.Close()
 	fw.file.Close()
 }
-

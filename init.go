@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/30x/apid"
 	"os"
-	"sync"
 	"path/filepath"
+	"sync"
 )
 
 const (
@@ -26,7 +26,7 @@ const (
 	analyticsUploadIntervalDefault = "5"
 
 	// Number of slots for internal channel buffering of analytics records before they are dumped to a file
-	analyticsBufferChannelSize  = "apidanalytics_buffer_channel_size"
+	analyticsBufferChannelSize        = "apidanalytics_buffer_channel_size"
 	analyticsBufferChannelSizeDefault = 100
 
 	// EdgeX endpoint base path to access Uap Collection Endpoint
@@ -34,16 +34,16 @@ const (
 
 	// If caching is used then data scope and developer info will be maintained in-memory
 	// cache to avoid DB calls for each analytics message
-	useCaching = "apidanalytics_use_caching"
+	useCaching        = "apidanalytics_use_caching"
 	useCachingDefault = true
 )
 
 // keep track of the services that this plugin will use
 var (
-	log    apid.LogService
-	config apid.ConfigService
-	data   apid.DataService
-	events apid.EventsService
+	log      apid.LogService
+	config   apid.ConfigService
+	data     apid.DataService
+	events   apid.EventsService
 	unsafeDB apid.DB
 	dbMux    sync.RWMutex
 

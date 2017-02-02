@@ -33,8 +33,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	config.Set("data_path", testTempDir)
-	config.Set(uapServerBase, "http://localhost:9000") // dummy value
-	config.Set("apigeesync_apid_instance_id","abcdefgh-ijkl-mnop-qrst-uvwxyz123456") // dummy value
+	config.Set(uapServerBase, "http://localhost:9000")                                // dummy value
+	config.Set("apigeesync_apid_instance_id", "abcdefgh-ijkl-mnop-qrst-uvwxyz123456") // dummy value
 	config.Set(useCaching, true)
 
 	db, err := apid.Data().DB()
@@ -125,7 +125,7 @@ func createTables(db apid.DB) {
 		);
 	`)
 	if err != nil {
-		panic("Unable to initialize DB " +  err.Error())
+		panic("Unable to initialize DB " + err.Error())
 	}
 }
 
@@ -161,7 +161,7 @@ func createApidClusterTables(db apid.DB) {
 		);
 	`)
 	if err != nil {
-		panic("Unable to initialize DB " +  err.Error())
+		panic("Unable to initialize DB " + err.Error())
 	}
 }
 
@@ -170,7 +170,7 @@ func insertTestData(db apid.DB) {
 	txn, err := db.Begin()
 	Expect(err).ShouldNot(HaveOccurred())
 	txn.Exec("INSERT INTO APP_CREDENTIAL_APIPRODUCT_MAPPER (tenant_id, appcred_id, app_id, apiprdt_id, status, _change_selector) "+
-		"VALUES" +
+		"VALUES"+
 		"($1,$2,$3,$4,$5,$6)",
 		"tenantid",
 		"testapikey",
@@ -178,33 +178,33 @@ func insertTestData(db apid.DB) {
 		"testproductid",
 		"APPROVED",
 		"12345",
-	);
+	)
 
 	txn.Exec("INSERT INTO APP (id, tenant_id, name, developer_id) "+
-		"VALUES" +
+		"VALUES"+
 		"($1,$2,$3,$4)",
 		"testappid",
 		"tenantid",
 		"testapp",
 		"testdeveloperid",
-	);
+	)
 
 	txn.Exec("INSERT INTO API_PRODUCT (id, tenant_id, name) "+
-		"VALUES" +
+		"VALUES"+
 		"($1,$2,$3)",
 		"testproductid",
 		"tenantid",
 		"testproduct",
-	);
+	)
 
 	txn.Exec("INSERT INTO DEVELOPER (id, tenant_id, username, email) "+
-		"VALUES" +
+		"VALUES"+
 		"($1,$2,$3,$4)",
 		"testdeveloperid",
 		"tenantid",
 		"testdeveloper",
 		"testdeveloper@test.com",
-	);
+	)
 
 	txn.Exec("INSERT INTO DATA_SCOPE (id, _change_selector, apid_cluster_id, scope, org, env) "+
 		"VALUES"+
@@ -215,10 +215,9 @@ func insertTestData(db apid.DB) {
 		"tenantid",
 		"testorg",
 		"testenv",
-	);
+	)
 	txn.Commit()
 }
-
 
 var _ = AfterSuite(func() {
 	apid.Events().Close()

@@ -21,21 +21,21 @@ type dbError struct {
 func initAPI(services apid.Services) {
 	log.Debug("initialized API's exposed by apidAnalytics plugin")
 	analyticsBasePath = config.GetString(configAnalyticsBasePath)
-	services.API().HandleFunc(analyticsBasePath + "/{bundle_scope_uuid}", saveAnalyticsRecord).Methods("POST")
+	services.API().HandleFunc(analyticsBasePath+"/{bundle_scope_uuid}", saveAnalyticsRecord).Methods("POST")
 }
 
 func saveAnalyticsRecord(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-	db := getDB()				// When database isnt initialized
+	db := getDB() // When database isnt initialized
 	if db == nil {
-		writeError(w, http.StatusInternalServerError,"INTERNAL_SERVER_ERROR","Service is not initialized completely")
+		writeError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "Service is not initialized completely")
 		return
 	}
 
-	if !strings.EqualFold(r.Header.Get("Content-Type"),"application/json") {
-		writeError(w, http.StatusBadRequest, "UNSUPPORTED_CONTENT_TYPE","Only supported content type is application/json")
+	if !strings.EqualFold(r.Header.Get("Content-Type"), "application/json") {
+		writeError(w, http.StatusBadRequest, "UNSUPPORTED_CONTENT_TYPE", "Only supported content type is application/json")
 		return
 	}
 
@@ -50,7 +50,7 @@ func saveAnalyticsRecord(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "UNKNOWN_SCOPE", dbErr.Reason)
 		}
 	} else {
-		err := processPayload(tenant, scopeuuid, r);
+		err := processPayload(tenant, scopeuuid, r)
 		if err.ErrorCode == "" {
 			w.WriteHeader(http.StatusOK)
 		} else {

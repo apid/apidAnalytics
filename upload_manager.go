@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	maxRetries = 3
+	maxRetries              = 3
 	retryFailedDirBatchSize = 10
 )
 

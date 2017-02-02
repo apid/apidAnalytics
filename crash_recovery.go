@@ -1,20 +1,19 @@
 package apidAnalytics
 
 import (
-	"time"
-	"io/ioutil"
-	"path/filepath"
 	"bufio"
-	"os"
-	"strings"
 	"compress/gzip"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 )
 
-
 const (
-	crashRecoveryDelay = 30  // seconds
-	recoveryTSLayout = "20060102150405.000" // same as "yyyyMMddHHmmss.SSS" format (Appended to Recovered folder and file)
-	recoveredTS  = "~recoveredTS~"	      // Constant to identify recovered files
+	crashRecoveryDelay = 30                   // seconds
+	recoveryTSLayout   = "20060102150405.000" // same as "yyyyMMddHHmmss.SSS" format (Appended to Recovered folder and file)
+	recoveredTS        = "~recoveredTS~"      // Constant to identify recovered files
 )
 
 func initCrashRecovery() {
@@ -22,16 +21,16 @@ func initCrashRecovery() {
 		timer := time.After(time.Second * crashRecoveryDelay)
 		// Actual recovery of files is attempted asynchronously after a delay to not block the apid plugin from starting up
 		go func() {
-			<- timer
+			<-timer
 			performRecovery()
 		}()
 	}
 }
 
 // Crash recovery is needed if there are any folders in tmp or recovered directory
-func crashRecoveryNeeded() (bool) {
+func crashRecoveryNeeded() bool {
 	recoveredDirRecoveryNeeded := recoverFolderInRecoveredDir()
-	tmpDirRecoveryNeeded :=  recoverFoldersInTmpDir()
+	tmpDirRecoveryNeeded := recoverFoldersInTmpDir()
 	needed := tmpDirRecoveryNeeded || recoveredDirRecoveryNeeded
 	if needed {
 		log.Infof("Crash Recovery is needed and will be attempted in %d seconds", crashRecoveryDelay)
@@ -43,14 +42,14 @@ func crashRecoveryNeeded() (bool) {
 // This partial data can be recoverd.
 func recoverFoldersInTmpDir() bool {
 	tmpRecoveryNeeded := false
-	dirs,_ := ioutil.ReadDir(localAnalyticsTempDir)
+	dirs, _ := ioutil.ReadDir(localAnalyticsTempDir)
 	recoveryTS := getRecoveryTS()
 	for _, dir := range dirs {
 		tmpRecoveryNeeded = true
 		log.Debugf("Moving directory '%s' from tmp to recovered folder", dir.Name())
 		tmpCompletePath := filepath.Join(localAnalyticsTempDir, dir.Name())
-		newDirName :=  dir.Name() + recoveredTS + recoveryTS;			// Eg. org~env~20160101222400~recoveredTS~20160101222612.123
-		recoveredCompletePath := filepath.Join(localAnalyticsRecoveredDir,newDirName)
+		newDirName := dir.Name() + recoveredTS + recoveryTS // Eg. org~env~20160101222400~recoveredTS~20160101222612.123
+		recoveredCompletePath := filepath.Join(localAnalyticsRecoveredDir, newDirName)
 		err := os.Rename(tmpCompletePath, recoveredCompletePath)
 		if err != nil {
 			log.Errorf("Cannot move directory '%s' from tmp to recovered folder", dir.Name())
@@ -75,17 +74,17 @@ func recoverFolderInRecoveredDir() bool {
 	return false
 }
 
-func performRecovery()  {
-	log.Info("Crash recovery is starting...");
+func performRecovery() {
+	log.Info("Crash recovery is starting...")
 	recoveryDirs, _ := ioutil.ReadDir(localAnalyticsRecoveredDir)
 	for _, dir := range recoveryDirs {
-		recoverDirectory(dir.Name());
+		recoverDirectory(dir.Name())
 	}
-	log.Info("Crash recovery complete...");
+	log.Info("Crash recovery complete...")
 }
 
 func recoverDirectory(dirName string) {
-	log.Infof("performing crash recovery for directory: %s", dirName);
+	log.Infof("performing crash recovery for directory: %s", dirName)
 	var bucketRecoveryTS string
 
 	// Parse bucket name to extract recoveryTS and pass it each file to be recovered
@@ -99,7 +98,7 @@ func recoverDirectory(dirName string) {
 	files, _ := ioutil.ReadDir(dirBeingRecovered)
 	for _, file := range files {
 		// recovering each file sequentially for now
-		recoverFile(bucketRecoveryTS, dirName, file.Name());
+		recoverFile(bucketRecoveryTS, dirName, file.Name())
 	}
 
 	stagingPath := filepath.Join(localAnalyticsStagingDir, dirName)
@@ -120,8 +119,8 @@ func recoverFile(bucketRecoveryTS, dirName, fileName string) {
 	recoveredFilePath := filepath.Join(localAnalyticsRecoveredDir, dirName, recoveredFileName)
 
 	// Copy complete records to new file and delete original partial file
-	copyPartialFile(completeOrigFilePath, recoveredFilePath);
-	deletePartialFile(completeOrigFilePath);
+	copyPartialFile(completeOrigFilePath, recoveredFilePath)
+	deletePartialFile(completeOrigFilePath)
 }
 
 // The file is read line by line and all complete records are extracted and copied to a new file which is closed as a correct gzip file.
