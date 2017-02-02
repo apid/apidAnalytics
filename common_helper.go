@@ -20,6 +20,9 @@ var developerInfoCacheLock = sync.RWMutex{}
 
 // Load data scope information into an in-memory cache so that for each record a DB lookup is not required
 func createTenantCache() error {
+	// Lock before writing to the map as it has multiple readers
+	tenantCachelock.Lock()
+	defer tenantCachelock.Unlock()
 	tenantCache = make(map[string]tenant)
 	var org, env, tenantId, id string
 
@@ -30,9 +33,6 @@ func createTenantCache() error {
 		return fmt.Errorf("Count not get datascope from DB due to: %v", error)
 	} else {
 		defer rows.Close()
-		// Lock before writing to the map as it has multiple readers
-		tenantCachelock.Lock()
-		defer tenantCachelock.Unlock()
 		for rows.Next() {
 			rows.Scan(&env, &org, &tenantId, &id)
 			tenantCache[id] = tenant{Org: org, Env: env, TenantId: tenantId}
@@ -45,6 +45,9 @@ func createTenantCache() error {
 
 // Load data scope information into an in-memory cache so that for each record a DB lookup is not required
 func createDeveloperInfoCache() error {
+	// Lock before writing to the map as it has multiple readers
+	developerInfoCacheLock.Lock()
+	defer developerInfoCacheLock.Unlock()
 	developerInfoCache = make(map[string]developerInfo)
 	var apiProduct, developerApp, developerEmail, developer sql.NullString
 	var tenantId, apiKey string
@@ -61,9 +64,6 @@ func createDeveloperInfoCache() error {
 		return fmt.Errorf("Count not get developerInfo from DB due to: %v", error)
 	} else {
 		defer rows.Close()
-		// Lock before writing to the map as it has multiple readers
-		developerInfoCacheLock.Lock()
-		defer developerInfoCacheLock.Unlock()
 		for rows.Next() {
 			rows.Scan(&tenantId, &apiKey, &apiProduct, &developerApp, &developer, &developerEmail)
 
@@ -84,7 +84,10 @@ func createDeveloperInfoCache() error {
 // Returns Tenant Info given a scope uuid from the cache or by querying the DB directly based on useCachig config
 func getTenantForScope(scopeuuid string) (tenant, dbError) {
 	if config.GetBool(useCaching) {
-		_, exists := tenantCache[scopeuuid]
+		// acquire a read lock as this cache has 1 writer as well
+		tenantCachelock.RLock()
+		defer tenantCachelock.RUnlock()
+		ten, exists := tenantCache[scopeuuid]
 		if !exists {
 			reason := "No tenant found for this scopeuuid: " + scopeuuid
 			errorCode := "UNKNOWN_SCOPE"
@@ -92,10 +95,7 @@ func getTenantForScope(scopeuuid string) (tenant, dbError) {
 			go createTenantCache()
 			return tenant{}, dbError{ErrorCode: errorCode, Reason: reason}
 		} else {
-			// acquire a read lock as this cache has 1 writer as well
-			tenantCachelock.RLock()
-			defer tenantCachelock.RUnlock()
-			return tenantCache[scopeuuid], dbError{}
+			return ten, dbError{}
 		}
 	} else {
 		var org, env, tenantId string
@@ -121,17 +121,17 @@ func getTenantForScope(scopeuuid string) (tenant, dbError) {
 func getDeveloperInfo(tenantId string, apiKey string) developerInfo {
 	if config.GetBool(useCaching) {
 		keyForMap := getKeyForDeveloperInfoCache(tenantId, apiKey)
-		_, exists := developerInfoCache[keyForMap]
+		// acquire a read lock as this cache has 1 writer as well
+		tenantCachelock.RLock()
+		defer tenantCachelock.RUnlock()
+		devInfo, exists := developerInfoCache[keyForMap]
 		if !exists {
 			log.Warnf("No data found for for tenantId = %s and apiKey = %s", tenantId, apiKey)
 			// Incase of unknown apiKey~tenantId, try to refresh the cache ansynchronously incase an update was missed or delayed
 			go createTenantCache()
 			return developerInfo{}
 		} else {
-			// acquire a read lock as this cache has 1 writer as well
-			developerInfoCacheLock.RLock()
-			defer developerInfoCacheLock.RUnlock()
-			return developerInfoCache[keyForMap]
+			return devInfo
 		}
 	} else {
 		var apiProduct, developerApp, developerEmail, developer sql.NullString
