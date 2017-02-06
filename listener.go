@@ -27,7 +27,8 @@ func (h *handler) Handle(e apid.Event) {
 }
 
 func processSnapshot(snapshot *common.Snapshot) {
-	log.Debugf("Snapshot received. Switching to DB version: %s", snapshot.SnapshotInfo)
+	log.Debugf("Snapshot received. Switching to"+
+		" DB version: %s", snapshot.SnapshotInfo)
 
 	db, err := data.DBVersion(snapshot.SnapshotInfo)
 	if err != nil {
@@ -40,7 +41,8 @@ func processSnapshot(snapshot *common.Snapshot) {
 		if err != nil {
 			log.Error(err)
 		} else {
-			log.Debug("Created a local cache for datasope information")
+			log.Debug("Created a local cache" +
+				" for datasope information")
 		}
 		err = createDeveloperInfoCache()
 		if err != nil {
@@ -49,7 +51,8 @@ func processSnapshot(snapshot *common.Snapshot) {
 			log.Debug("Created a local cache for developer information")
 		}
 	} else {
-		log.Info("Will not be caching any developer info and make a DB call for every analytics msg")
+		log.Info("Will not be caching any developer info " +
+			"and make a DB call for every analytics msg")
 	}
 	return
 }
@@ -66,32 +69,44 @@ func processChange(changes *common.ChangeList) {
 				switch payload.Operation {
 				case common.Insert, common.Update:
 					rows = append(rows, payload.NewRow)
-					// Lock before writing to the map as it has multiple readers
+					// Lock before writing to the
+					// map as it has multiple readers
 					tenantCachelock.Lock()
 					defer tenantCachelock.Unlock()
 					for _, ele := range rows {
-						var scopeuuid, tenantid, org, env string
+						var scopeuuid, tenantid string
+						var org, env string
 						ele.Get("id", &scopeuuid)
 						ele.Get("scope", &tenantid)
 						ele.Get("org", &org)
 						ele.Get("env", &env)
-						tenantCache[scopeuuid] = tenant{Org: org, Env: env, TenantId: tenantid}
-						log.Debugf("Refreshed local tenantCache. Added scope: %s", scopeuuid)
+						tenantCache[scopeuuid] = tenant{
+							Org:      org,
+							Env:      env,
+							TenantId: tenantid}
+						log.Debugf("Refreshed local "+
+							"tenantCache. Added "+
+							"scope: "+"%s", scopeuuid)
 					}
 				case common.Delete:
 					rows = append(rows, payload.OldRow)
-					// Lock before writing to the map as it has multiple readers
+					// Lock before writing to the map
+					// as it has multiple readers
 					tenantCachelock.Lock()
 					defer tenantCachelock.Unlock()
 					for _, ele := range rows {
 						var scopeuuid string
 						ele.Get("id", &scopeuuid)
 						delete(tenantCache, scopeuuid)
-						log.Debugf("Refreshed local tenantCache. Deleted scope: %s", scopeuuid)
+						log.Debugf("Refreshed local"+
+							" tenantCache. Deleted"+
+							" scope: %s", scopeuuid)
 					}
 				}
-			case "kms.developer", "kms.app", "kms.api_product", "kms.app_credential_apiproduct_mapper":
-				// any change in any of the above tables should result in cache refresh
+			case "kms.developer", "kms.app", "kms.api_product",
+				"kms.app_credential_apiproduct_mapper":
+				// any change in any of the above tables
+				// should result in cache refresh
 				createDeveloperInfoCache()
 				log.Debug("Refresh local developerInfoCache")
 			}

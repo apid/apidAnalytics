@@ -12,25 +12,32 @@ const (
 	retryFailedDirBatchSize = 10
 )
 
-// Each file upload is retried maxRetries times before moving it to failed directory
+// Each file upload is retried maxRetries times before
+// moving it to failed directory
 var retriesMap map[string]int
 
-//TODO:  make sure that this instance gets initialized only once since we dont want multiple upload manager tickers running
+//TODO:  make sure that this instance gets initialized only once
+// since we dont want multiple upload manager tickers running
 func initUploadManager() {
 
 	retriesMap = make(map[string]int)
 
 	go func() {
-		// Periodically check the staging directory to check if any folders are ready to be uploaded to S3
-		ticker := time.NewTicker(time.Second * config.GetDuration(analyticsUploadInterval))
+		// Periodically check the staging directory to check
+		// if any folders are ready to be uploaded to S3
+		ticker := time.NewTicker(time.Second *
+			config.GetDuration(analyticsUploadInterval))
 		log.Debugf("Intialized upload manager to check for staging directory")
-		defer ticker.Stop() // Ticker will keep running till go routine is running i.e. till application is running
+		// Ticker will keep running till go routine is running
+		// i.e. till application is running
+		defer ticker.Stop()
 
 		for range ticker.C {
 			files, err := ioutil.ReadDir(localAnalyticsStagingDir)
 
 			if err != nil {
-				log.Errorf("Cannot read directory: %s", localAnalyticsStagingDir)
+				log.Errorf("Cannot read directory: "+
+					"%s", localAnalyticsStagingDir)
 			}
 
 			uploadedDirCnt := 0
@@ -44,7 +51,8 @@ func initUploadManager() {
 				}
 			}
 			if uploadedDirCnt > 0 {
-				// After a successful upload, retry the folders in failed directory as they might have
+				// After a successful upload, retry the
+				// folders in failed directory as they might have
 				// failed due to intermitent S3/GCS issue
 				retryFailedUploads()
 			}
@@ -54,10 +62,12 @@ func initUploadManager() {
 
 func handleUploadDirStatus(dir os.FileInfo, status bool) {
 	completePath := filepath.Join(localAnalyticsStagingDir, dir.Name())
-	// If upload is successful then delete files and remove bucket from retry map
+	// If upload is successful then delete files
+	// and remove bucket from retry map
 	if status {
 		os.RemoveAll(completePath)
-		log.Debugf("deleted directory after successful upload: %s", dir.Name())
+		log.Debugf("deleted directory after "+
+			"successful upload: %s", dir.Name())
 		// remove key if exists from retry map after a successful upload
 		delete(retriesMap, dir.Name())
 	} else {
@@ -67,7 +77,8 @@ func handleUploadDirStatus(dir os.FileInfo, status bool) {
 			failedDirPath := filepath.Join(localAnalyticsFailedDir, dir.Name())
 			err := os.Rename(completePath, failedDirPath)
 			if err != nil {
-				log.Errorf("Cannot move directory '%s' from staging to failed folder", dir.Name())
+				log.Errorf("Cannot move directory '%s'"+
+					" from staging to failed folder", dir.Name())
 			}
 			// remove key from retry map once it reaches allowed max failed attempts
 			delete(retriesMap, dir.Name())
@@ -90,7 +101,8 @@ func retryFailedUploads() {
 			newStagingPath := filepath.Join(localAnalyticsStagingDir, dir.Name())
 			err := os.Rename(failedPath, newStagingPath)
 			if err != nil {
-				log.Errorf("Cannot move directory '%s' from failed to staging folder", dir.Name())
+				log.Errorf("Cannot move directory '%s'"+
+					" from failed to staging folder", dir.Name())
 			}
 		} else {
 			break

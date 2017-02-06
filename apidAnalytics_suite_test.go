@@ -33,8 +33,9 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	config.Set("data_path", testTempDir)
-	config.Set(uapServerBase, "http://localhost:9000")                                // dummy value
-	config.Set("apigeesync_apid_instance_id", "abcdefgh-ijkl-mnop-qrst-uvwxyz123456") // dummy value
+	config.Set(uapServerBase, "http://localhost:9000") // dummy value
+	config.Set("apigeesync_apid_instance_id",
+		"abcdefgh-ijkl-mnop-qrst-uvwxyz123456") // dummy value
 	config.Set(useCaching, true)
 
 	db, err := apid.Data().DB()
@@ -49,11 +50,12 @@ var _ = BeforeSuite(func() {
 	createTenantCache()
 	createDeveloperInfoCache()
 
-	testServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path == analyticsBasePathDefault {
-			saveAnalyticsRecord(w, req)
-		}
-	}))
+	testServer = httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, req *http.Request) {
+			if req.URL.Path == analyticsBasePathDefault {
+				saveAnalyticsRecord(w, req)
+			}
+		}))
 })
 
 func createTables(db apid.DB) {
@@ -169,7 +171,8 @@ func insertTestData(db apid.DB) {
 
 	txn, err := db.Begin()
 	Expect(err).ShouldNot(HaveOccurred())
-	txn.Exec("INSERT INTO APP_CREDENTIAL_APIPRODUCT_MAPPER (tenant_id, appcred_id, app_id, apiprdt_id, status, _change_selector) "+
+	txn.Exec("INSERT INTO APP_CREDENTIAL_APIPRODUCT_MAPPER (tenant_id,"+
+		" appcred_id, app_id, apiprdt_id, status, _change_selector) "+
 		"VALUES"+
 		"($1,$2,$3,$4,$5,$6)",
 		"tenantid",
@@ -206,7 +209,8 @@ func insertTestData(db apid.DB) {
 		"testdeveloper@test.com",
 	)
 
-	txn.Exec("INSERT INTO DATA_SCOPE (id, _change_selector, apid_cluster_id, scope, org, env) "+
+	txn.Exec("INSERT INTO DATA_SCOPE (id, _change_selector, "+
+		"apid_cluster_id, scope, org, env) "+
 		"VALUES"+
 		"($1,$2,$3,$4,$5,$6)",
 		"testid",

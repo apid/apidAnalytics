@@ -9,7 +9,8 @@ import (
 )
 
 /*
-Implements all the helper methods needed to process the POST /analytics payload and send it to the internal buffer channel
+Implements all the helper methods needed to process the POST /analytics payload
+and send it to the internal buffer channel
 */
 
 type developerInfo struct {
@@ -20,8 +21,9 @@ type developerInfo struct {
 }
 
 type axRecords struct {
-	Tenant  tenant
-	Records []interface{} // Records is an array of multiple analytics records
+	Tenant tenant
+	// Records is an array of multiple analytics records
+	Records []interface{}
 }
 
 type tenant struct {
@@ -34,7 +36,9 @@ func processPayload(tenant tenant, scopeuuid string, r *http.Request) errRespons
 	var gzipEncoded bool
 	if r.Header.Get("Content-Encoding") != "" {
 		if !strings.EqualFold(r.Header.Get("Content-Encoding"), "gzip") {
-			return errResponse{ErrorCode: "UNSUPPORTED_CONTENT_ENCODING", Reason: "Only supported content encoding is gzip"}
+			return errResponse{
+				ErrorCode: "UNSUPPORTED_CONTENT_ENCODING",
+				Reason:    "Only supported content encoding is gzip"}
 		} else {
 			gzipEncoded = true
 		}
@@ -45,7 +49,9 @@ func processPayload(tenant tenant, scopeuuid string, r *http.Request) errRespons
 	if gzipEncoded {
 		reader, err = gzip.NewReader(r.Body) // reader for gzip encoded data
 		if err != nil {
-			return errResponse{ErrorCode: "BAD_DATA", Reason: "Gzip Encoded data cannot be read"}
+			return errResponse{
+				ErrorCode: "BAD_DATA",
+				Reason:    "Gzip Encoded data cannot be read"}
 		}
 	} else {
 		reader = r.Body
@@ -64,7 +70,8 @@ func validateEnrichPublish(tenant tenant, scopeuuid string, reader io.Reader) er
 	decoder.UseNumber()
 
 	if err := decoder.Decode(&raw); err != nil {
-		return errResponse{ErrorCode: "BAD_DATA", Reason: "Not a valid JSON payload"}
+		return errResponse{ErrorCode: "BAD_DATA",
+			Reason: "Not a valid JSON payload"}
 	}
 
 	if records := raw["records"]; records != nil {
@@ -75,14 +82,19 @@ func validateEnrichPublish(tenant tenant, scopeuuid string, reader io.Reader) er
 			if valid {
 				enrich(recordMap, scopeuuid, tenant)
 			} else {
-				return err // Even if there is one bad record, then reject entire batch
+				// Even if there is one bad record, then reject entire batch
+				return err
 			}
 		}
-		axRecords := axRecords{Tenant: tenant, Records: records.([]interface{})}
+		axRecords := axRecords{
+			Tenant:  tenant,
+			Records: records.([]interface{})}
 		// publish batch of records to channel (blocking call)
 		internalBuffer <- axRecords
 	} else {
-		return errResponse{ErrorCode: "NO_RECORDS", Reason: "No analytics records in the payload"}
+		return errResponse{
+			ErrorCode: "NO_RECORDS",
+			Reason:    "No analytics records in the payload"}
 	}
 	return errResponse{}
 }
@@ -96,7 +108,9 @@ func validate(recordMap map[string]interface{}) (bool, errResponse) {
 	elems := []string{"client_received_start_timestamp"}
 	for _, elem := range elems {
 		if recordMap[elem] == nil {
-			return false, errResponse{ErrorCode: "MISSING_FIELD", Reason: "Missing Required field: " + elem}
+			return false, errResponse{
+				ErrorCode: "MISSING_FIELD",
+				Reason:    "Missing Required field: " + elem}
 		}
 	}
 
@@ -104,7 +118,10 @@ func validate(recordMap map[string]interface{}) (bool, errResponse) {
 	cret, exists2 := recordMap["client_received_end_timestamp"]
 	if exists1 && exists2 {
 		if crst.(json.Number) > cret.(json.Number) {
-			return false, errResponse{ErrorCode: "BAD_DATA", Reason: "client_received_start_timestamp > client_received_end_timestamp"}
+			return false, errResponse{
+				ErrorCode: "BAD_DATA",
+				Reason: "client_received_start_timestamp " +
+					"> client_received_end_timestamp"}
 		}
 	}
 	return true, errResponse{}

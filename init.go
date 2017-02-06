@@ -21,18 +21,21 @@ const (
 	analyticsCollectionInterval        = "apidanalytics_collection_interval"
 	analyticsCollectionIntervalDefault = "120"
 
-	// Interval in seconds based on which staging directory will be checked for folders ready to be uploaded
+	// Interval in seconds based on which staging directory
+	// will be checked for folders ready to be uploaded
 	analyticsUploadInterval        = "apidanalytics_upload_interval"
 	analyticsUploadIntervalDefault = "5"
 
-	// Number of slots for internal channel buffering of analytics records before they are dumped to a file
+	// Number of slots for internal channel buffering of
+	// analytics records before they are dumped to a file
 	analyticsBufferChannelSize        = "apidanalytics_buffer_channel_size"
 	analyticsBufferChannelSizeDefault = 100
 
 	// EdgeX endpoint base path to access Uap Collection Endpoint
 	uapServerBase = "apidanalytics_uap_server_base"
 
-	// If caching is used then data scope and developer info will be maintained in-memory
+	// If caching is used then data scope and developer
+	// info will be maintained in-memory
 	// cache to avoid DB calls for each analytics message
 	useCaching        = "apidanalytics_use_caching"
 	useCachingDefault = true
@@ -90,25 +93,33 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 
 	for _, key := range []string{uapServerBase} {
 		if !config.IsSet(key) {
-			return pluginData, fmt.Errorf("Missing required config value: %s", key)
+			return pluginData,
+				fmt.Errorf("Missing required config value: %s", key)
 		}
 	}
 
 	// Create directories for managing buffering and upload to UAP stages
-	directories := []string{localAnalyticsBaseDir, localAnalyticsTempDir, localAnalyticsStagingDir, localAnalyticsFailedDir, localAnalyticsRecoveredDir}
+	directories := []string{localAnalyticsBaseDir,
+		localAnalyticsTempDir,
+		localAnalyticsStagingDir,
+		localAnalyticsFailedDir,
+		localAnalyticsRecoveredDir}
 	err = createDirectories(directories)
 
 	if err != nil {
-		return pluginData, fmt.Errorf("Cannot create required local directories: %v ", err)
+		return pluginData, fmt.Errorf("Cannot create "+
+			"required local directories: %v ", err)
 	}
 
 	// Initialize one time crash recovery to be performed by the plugin on start up
 	initCrashRecovery()
 
-	// Initialize upload manager to watch the staging directory and upload files to UAP as they are ready
+	// Initialize upload manager to watch the staging directory and
+	// upload files to UAP as they are ready
 	initUploadManager()
 
-	// Initialize buffer manager to watch the internalBuffer channel for new messages and dump them to files
+	// Initialize buffer manager to watch the internalBuffer channel
+	// for new messages and dump them to files
 	initBufferingManager()
 
 	// Initialize API's and expose them
@@ -129,7 +140,8 @@ func setConfig(services apid.Services) error {
 	}
 
 	// set local directory paths that will be used to buffer analytics data on disk
-	localAnalyticsBaseDir = filepath.Join(config.GetString("local_storage_path"), config.GetString(configAnalyticsDataPath))
+	localAnalyticsBaseDir = filepath.Join(config.GetString("local_storage_path"),
+		config.GetString(configAnalyticsDataPath))
 	localAnalyticsTempDir = filepath.Join(localAnalyticsBaseDir, "tmp")
 	localAnalyticsStagingDir = filepath.Join(localAnalyticsBaseDir, "staging")
 	localAnalyticsFailedDir = filepath.Join(localAnalyticsBaseDir, "failed")
@@ -158,7 +170,8 @@ func createDirectories(directories []string) error {
 			if error != nil {
 				return error
 			}
-			log.Infof("created directory for analytics data collection: %s", path)
+			log.Infof("created directory for analytics "+
+				"data collection: %s", path)
 		}
 	}
 	return nil

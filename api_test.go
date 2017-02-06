@@ -20,7 +20,8 @@ var _ = Describe("testing saveAnalyticsRecord() directly", func() {
 			v.Add("bundle_scope_uuid", "testid")
 
 			client := &http.Client{}
-			req, err := http.NewRequest("POST", uri.String(), strings.NewReader(v.Encode()))
+			req, err := http.NewRequest("POST", uri.String(),
+				strings.NewReader(v.Encode()))
 			res, err := client.Do(req)
 			defer res.Body.Close()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -37,7 +38,8 @@ var _ = Describe("testing saveAnalyticsRecord() directly", func() {
 			v.Add("bundle_scope_uuid", "wrongId")
 
 			client := &http.Client{}
-			req, err := http.NewRequest("POST", uri.String(), strings.NewReader(v.Encode()))
+			req, err := http.NewRequest("POST", uri.String(),
+				strings.NewReader(v.Encode()))
 			res, err := client.Do(req)
 			defer res.Body.Close()
 			Expect(err).ShouldNot(HaveOccurred())

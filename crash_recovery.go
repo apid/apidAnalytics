@@ -11,15 +11,18 @@ import (
 )
 
 const (
-	crashRecoveryDelay = 30                   // seconds
-	recoveryTSLayout   = "20060102150405.000" // same as "yyyyMMddHHmmss.SSS" format (Appended to Recovered folder and file)
-	recoveredTS        = "~recoveredTS~"      // Constant to identify recovered files
+	crashRecoveryDelay = 30 // seconds
+	// same as "yyyyMMddHHmmss.SSS" format (Appended to Recovered folder and file)
+	recoveryTSLayout = "20060102150405.000"
+	// Constant to identify recovered files
+	recoveredTS = "~recoveredTS~"
 )
 
 func initCrashRecovery() {
 	if crashRecoveryNeeded() {
 		timer := time.After(time.Second * crashRecoveryDelay)
-		// Actual recovery of files is attempted asynchronously after a delay to not block the apid plugin from starting up
+		// Actual recovery of files is attempted asynchronously
+		// after a delay to not block the apid plugin from starting up
 		go func() {
 			<-timer
 			performRecovery()
@@ -33,12 +36,14 @@ func crashRecoveryNeeded() bool {
 	tmpDirRecoveryNeeded := recoverFoldersInTmpDir()
 	needed := tmpDirRecoveryNeeded || recoveredDirRecoveryNeeded
 	if needed {
-		log.Infof("Crash Recovery is needed and will be attempted in %d seconds", crashRecoveryDelay)
+		log.Infof("Crash Recovery is needed and will be "+
+			"attempted in %d seconds", crashRecoveryDelay)
 	}
 	return needed
 }
 
-// If Apid is shutdown or crashes while a file is still open in tmp folder, then the file has partial data.
+// If Apid is shutdown or crashes while a file is still open in tmp folder,
+// then the file has partial data.
 // This partial data can be recoverd.
 func recoverFoldersInTmpDir() bool {
 	tmpRecoveryNeeded := false
@@ -46,13 +51,16 @@ func recoverFoldersInTmpDir() bool {
 	recoveryTS := getRecoveryTS()
 	for _, dir := range dirs {
 		tmpRecoveryNeeded = true
-		log.Debugf("Moving directory '%s' from tmp to recovered folder", dir.Name())
+		log.Debugf("Moving directory '%s' from tmp to"+
+			" recovered folder", dir.Name())
 		tmpCompletePath := filepath.Join(localAnalyticsTempDir, dir.Name())
-		newDirName := dir.Name() + recoveredTS + recoveryTS // Eg. org~env~20160101222400~recoveredTS~20160101222612.123
+		// Eg. org~env~20160101222400~recoveredTS~20160101222612.123
+		newDirName := dir.Name() + recoveredTS + recoveryTS
 		recoveredCompletePath := filepath.Join(localAnalyticsRecoveredDir, newDirName)
 		err := os.Rename(tmpCompletePath, recoveredCompletePath)
 		if err != nil {
-			log.Errorf("Cannot move directory '%s' from tmp to recovered folder", dir.Name())
+			log.Errorf("Cannot move directory '%s' "+
+				"from tmp to recovered folder", dir.Name())
 		}
 	}
 	return tmpRecoveryNeeded
@@ -64,8 +72,10 @@ func getRecoveryTS() string {
 	return current.Format(recoveryTSLayout)
 }
 
-// If APID is restarted twice immediately such that files have been moved to recovered folder but actual recovery has'nt started or is partially done
-// Then the files will just stay in the recovered dir and need to be recovered again.
+// If APID is restarted twice immediately such that files have been moved to
+// recovered folder but actual recovery has'nt started or is partially done
+// Then the files will just stay in the recovered dir
+// and need to be recovered again.
 func recoverFolderInRecoveredDir() bool {
 	dirs, _ := ioutil.ReadDir(localAnalyticsRecoveredDir)
 	if len(dirs) > 0 {
@@ -88,7 +98,8 @@ func recoverDirectory(dirName string) {
 	var bucketRecoveryTS string
 
 	// Parse bucket name to extract recoveryTS and pass it each file to be recovered
-	// Eg. org~env~20160101222400~recoveredTS~20160101222612.123 -> bucketRecoveryTS = _20160101222612.123
+	// Eg. org~env~20160101222400~recoveredTS~20160101222612.123
+	// 			-> bucketRecoveryTS = _20160101222612.123
 	index := strings.Index(dirName, recoveredTS)
 	if index != -1 {
 		bucketRecoveryTS = "_" + dirName[index+len(recoveredTS):]
@@ -104,7 +115,8 @@ func recoverDirectory(dirName string) {
 	stagingPath := filepath.Join(localAnalyticsStagingDir, dirName)
 	err := os.Rename(dirBeingRecovered, stagingPath)
 	if err != nil {
-		log.Errorf("Cannot move directory '%s' from recovered to staging folder", dirName)
+		log.Errorf("Cannot move directory '%s' from"+
+			" recovered to staging folder", dirName)
 	}
 }
 
@@ -123,7 +135,8 @@ func recoverFile(bucketRecoveryTS, dirName, fileName string) {
 	deletePartialFile(completeOrigFilePath)
 }
 
-// The file is read line by line and all complete records are extracted and copied to a new file which is closed as a correct gzip file.
+// The file is read line by line and all complete records are extracted
+// and copied to a new file which is closed as a correct gzip file.
 func copyPartialFile(completeOrigFilePath, recoveredFilePath string) {
 	partialFile, err := os.Open(completeOrigFilePath)
 	if err != nil {
@@ -135,7 +148,8 @@ func copyPartialFile(completeOrigFilePath, recoveredFilePath string) {
 	bufReader := bufio.NewReader(partialFile)
 	gzReader, err := gzip.NewReader(bufReader)
 	if err != nil {
-		log.Errorf("Cannot create reader on gzip file: %s due to %v", completeOrigFilePath, err)
+		log.Errorf("Cannot create reader on gzip file: %s"+
+			" due to %v", completeOrigFilePath, err)
 		return
 	}
 	defer gzReader.Close()
@@ -143,7 +157,8 @@ func copyPartialFile(completeOrigFilePath, recoveredFilePath string) {
 	scanner := bufio.NewScanner(gzReader)
 
 	// Create new file to copy complete records from partial file and upload only a complete file
-	recoveredFile, err := os.OpenFile(recoveredFilePath, os.O_WRONLY|os.O_CREATE, os.ModePerm)
+	recoveredFile, err := os.OpenFile(recoveredFilePath,
+		os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		log.Errorf("Cannot create recovered file: %s", recoveredFilePath)
 		return
