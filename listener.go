@@ -62,6 +62,7 @@ func processChange(changes *common.ChangeList) {
 		log.Debugf("apigeeSyncEvent: %d changes", len(changes.Changes))
 		var rows []common.Row
 
+		refreshDevInfoNeeded := false
 		for _, payload := range changes.Changes {
 			rows = nil
 			switch payload.Table {
@@ -107,9 +108,13 @@ func processChange(changes *common.ChangeList) {
 				"kms.app_credential_apiproduct_mapper":
 				// any change in any of the above tables
 				// should result in cache refresh
-				createDeveloperInfoCache()
-				log.Debug("Refresh local developerInfoCache")
+				refreshDevInfoNeeded = true
 			}
+		}
+		// Refresh cache once for all set of changes
+		if refreshDevInfoNeeded {
+			createDeveloperInfoCache()
+			log.Debug("Refresh local developerInfoCache")
 		}
 	}
 }
