@@ -26,36 +26,42 @@ func TestApidAnalytics(t *testing.T) {
 var _ = BeforeSuite(func() {
 	apid.Initialize(factory.DefaultServicesFactory())
 
-	config := apid.Config()
+	config = apid.Config()
 
 	var err error
 	testTempDir, err = ioutil.TempDir("", "api_test")
 	Expect(err).NotTo(HaveOccurred())
 
+	config.Set("local_storage_path", testTempDir)
 	config.Set("data_path", testTempDir)
-	config.Set(uapServerBase, "http://localhost:9000") // dummy value
-	config.Set("apigeesync_apid_instance_id",
-		"abcdefgh-ijkl-mnop-qrst-uvwxyz123456") // dummy value
-	config.Set(useCaching, true)
+	config.Set("apigeesync_apid_instance_id", "abcdefgh-ijkl-mnop-qrst-uvwxyz123456") // dummy value
 
 	db, err := apid.Data().DB()
 	Expect(err).NotTo(HaveOccurred())
-	setDB(db)
+
 	createApidClusterTables(db)
 	createTables(db)
 	insertTestData(db)
-	apid.InitializePlugins()
+	setDB(db)
 
-	// Create cache else its created in listener.go when a snapshot is received
+	// required config uapServerBase is not set, thus init should panic
+	Expect(apid.InitializePlugins).To(Panic())
+
+	config.Set(uapServerBase, "http://localhost:9000") // dummy value
+	Expect(apid.InitializePlugins).ToNot(Panic())
+
+	config.Set(useCaching, true)
 	createTenantCache()
-	createDeveloperInfoCache()
+	Expect(len(tenantCache)).To(Equal(1))
 
-	testServer = httptest.NewServer(http.HandlerFunc(
-		func(w http.ResponseWriter, req *http.Request) {
-			if req.URL.Path == analyticsBasePathDefault {
-				saveAnalyticsRecord(w, req)
-			}
-		}))
+	createDeveloperInfoCache()
+	Expect(len(developerInfoCache)).To(Equal(1))
+
+	router := apid.API().Router()
+	router.HandleFunc(analyticsBasePath+"/{bundle_scope_uuid}", func(w http.ResponseWriter, req *http.Request) {
+		saveAnalyticsRecord(w, req)
+	}).Methods("POST")
+	testServer = httptest.NewServer(router)
 })
 
 func createTables(db apid.DB) {

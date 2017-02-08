@@ -1,49 +1,203 @@
 package apidAnalytics
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 // BeforeSuite setup and AfterSuite cleanup is in apidAnalytics_suite_test.go
-var _ = Describe("testing saveAnalyticsRecord() directly", func() {
-	Context("valid scopeuuid", func() {
-		It("should successfully return", func() {
+var _ = Describe("POST /analytics/{scopeuuid}", func() {
+	Context("invalid content type header", func() {
+		It("should return bad request", func() {
 			uri, err := url.Parse(testServer.URL)
-			uri.Path = analyticsBasePath
-
-			v := url.Values{}
-			v.Add("bundle_scope_uuid", "testid")
-
-			client := &http.Client{}
-			req, err := http.NewRequest("POST", uri.String(),
-				strings.NewReader(v.Encode()))
-			res, err := client.Do(req)
-			defer res.Body.Close()
+			uri.Path = fmt.Sprintf(analyticsBasePath+"/%s", "test")
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(res.StatusCode, http.StatusOK)
+
+			req, _ := http.NewRequest("POST", uri.String(), nil)
+			req.Header.Set("Content-Type", "application/x-gzip")
+
+			res, e := makeRequest(req)
+
+			Expect(res.StatusCode).To(Equal(http.StatusBadRequest))
+			Expect(e.ErrorCode).To(Equal("UNSUPPORTED_CONTENT_TYPE"))
+		})
+	})
+
+	Context("invalid content encoding header", func() {
+		It("should return bad request", func() {
+			uri, err := url.Parse(testServer.URL)
+			uri.Path = fmt.Sprintf(analyticsBasePath+"/%s", "testid")
+			Expect(err).ShouldNot(HaveOccurred())
+
+			req, _ := http.NewRequest("POST", uri.String(), nil)
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Content-Encoding", "application/gzip")
+
+			res, e := makeRequest(req)
+
+			Expect(res.StatusCode).To(Equal(http.StatusBadRequest))
+			Expect(e.ErrorCode).To(Equal("UNSUPPORTED_CONTENT_ENCODING"))
 		})
 	})
 
 	Context("invalid scopeuuid", func() {
 		It("should return bad request", func() {
 			uri, err := url.Parse(testServer.URL)
-			uri.Path = analyticsBasePath
-
-			v := url.Values{}
-			v.Add("bundle_scope_uuid", "wrongId")
-
-			client := &http.Client{}
-			req, err := http.NewRequest("POST", uri.String(),
-				strings.NewReader(v.Encode()))
-			res, err := client.Do(req)
-			defer res.Body.Close()
+			uri.Path = fmt.Sprintf(analyticsBasePath+"/%s", "wrongid")
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(res.StatusCode, http.StatusBadRequest)
+
+			req, _ := http.NewRequest("POST", uri.String(), nil)
+			req.Header.Set("Content-Type", "application/json")
+
+			res, e := makeRequest(req)
+
+			Expect(res.StatusCode).To(Equal(http.StatusBadRequest))
+			Expect(e.ErrorCode).To(Equal("UNKNOWN_SCOPE"))
+		})
+	})
+
+	Context("Unitialized DB", func() {
+		It("should return internal server error", func() {
+			db := getDB()
+			setDB(nil)
+
+			uri, err := url.Parse(testServer.URL)
+			uri.Path = fmt.Sprintf(analyticsBasePath+"/%s", "testid")
+			Expect(err).ShouldNot(HaveOccurred())
+
+			req, _ := http.NewRequest("POST", uri.String(), nil)
+			req.Header.Set("Content-Type", "application/json")
+
+			res, e := makeRequest(req)
+
+			Expect(res.StatusCode).To(Equal(http.StatusInternalServerError))
+			Expect(e.ErrorCode).To(Equal("INTERNAL_SERVER_ERROR"))
+
+			setDB(db)
+
+		})
+	})
+
+	Context("bad payload", func() {
+		It("should return bad request", func() {
+
+			By("no payload")
+			uri, err := url.Parse(testServer.URL)
+			uri.Path = fmt.Sprintf(analyticsBasePath+"/%s", "testid")
+			Expect(err).ShouldNot(HaveOccurred())
+
+			req, _ := http.NewRequest("POST", uri.String(), nil)
+			req.Header.Set("Content-Type", "application/json")
+
+			res, e := makeRequest(req)
+
+			Expect(res.StatusCode).To(Equal(http.StatusBadRequest))
+			Expect(e.ErrorCode).To(Equal("BAD_DATA"))
+			Expect(e.Reason).To(Equal("Not a valid JSON payload"))
+
+			By("payload with 0 records")
+			uri, err = url.Parse(testServer.URL)
+			uri.Path = fmt.Sprintf(analyticsBasePath+"/%s", "testid")
+			Expect(err).ShouldNot(HaveOccurred())
+
+			var payload = []byte(`{}`)
+			req, _ = http.NewRequest("POST", uri.String(), bytes.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+
+			res, e = makeRequest(req)
+
+			Expect(res.StatusCode).To(Equal(http.StatusBadRequest))
+			Expect(e.ErrorCode).To(Equal("NO_RECORDS"))
+
+			By("set content encoding to gzip but send json data")
+			uri, err = url.Parse(testServer.URL)
+			uri.Path = fmt.Sprintf(analyticsBasePath+"/%s", "testid")
+			Expect(err).ShouldNot(HaveOccurred())
+
+			payload = []byte(`{
+					"records":[{
+						"response_status_code": 200,
+						"client_id":"testapikey"
+					}]
+				}`)
+
+			req, _ = http.NewRequest("POST", uri.String(), bytes.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Content-Encoding", "gzip")
+
+			res, e = makeRequest(req)
+
+			Expect(res.StatusCode).To(Equal(http.StatusBadRequest))
+			Expect(e.ErrorCode).To(Equal("BAD_DATA"))
+			Expect(e.Reason).To(Equal("Gzip Encoded data cannot be read"))
+
+			By("1 bad record")
+			uri, err = url.Parse(testServer.URL)
+			uri.Path = fmt.Sprintf(analyticsBasePath+"/%s", "testid")
+			Expect(err).ShouldNot(HaveOccurred())
+
+			payload = []byte(`{
+						"records":[{
+							"response_status_code": 200,
+							"client_id":"testapikey",
+							"client_received_start_timestamp": 1486406248277,
+							"client_received_end_timestamp": 1486406248290
+						},{
+							"response_status_code": 200,
+							"client_id":"testapikey"
+						}]
+					}`)
+
+			req, _ = http.NewRequest("POST", uri.String(), bytes.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+
+			res, e = makeRequest(req)
+
+			Expect(res.StatusCode).To(Equal(http.StatusBadRequest))
+			Expect(e.ErrorCode).To(Equal("MISSING_FIELD"))
+		})
+	})
+
+	Context("valid payload", func() {
+		It("should return successfully", func() {
+			uri, err := url.Parse(testServer.URL)
+			uri.Path = fmt.Sprintf(analyticsBasePath+"/%s", "testid")
+			Expect(err).ShouldNot(HaveOccurred())
+
+			var payload = []byte(`{
+					"records":[{
+						"response_status_code": 200,
+						"client_id":"testapikey",
+						"client_received_start_timestamp": 1486406248277,
+						"client_received_end_timestamp": 1486406248290
+					}]
+				}`)
+
+			req, _ := http.NewRequest("POST", uri.String(), bytes.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+
+			res, _ := makeRequest(req)
+
+			Expect(res.StatusCode).To(Equal(http.StatusOK))
 		})
 	})
 })
+
+func makeRequest(req *http.Request) (*http.Response, errResponse) {
+	res, err := client.Do(req)
+	defer res.Body.Close()
+	Expect(err).ShouldNot(HaveOccurred())
+
+	var body errResponse
+	respBody, _ := ioutil.ReadAll(res.Body)
+	json.Unmarshal(respBody, &body)
+
+	return res, body
+}
