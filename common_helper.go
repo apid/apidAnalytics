@@ -158,7 +158,7 @@ func getDeveloperInfo(tenantId string, apiKey string) developerInfo {
 				" and apiKey = %s", tenantId, apiKey)
 			// Incase of unknown apiKey~tenantId,
 			// try to refresh the cache ansynchronously incase an update was missed or delayed
-			go createTenantCache()
+			go createDeveloperInfoCache()
 			return developerInfo{}
 		} else {
 			return devInfo
