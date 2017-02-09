@@ -4,6 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"encoding/json"
 	"github.com/30x/apid"
 	"github.com/30x/apid/factory"
 	"io/ioutil"
@@ -38,11 +39,7 @@ var _ = BeforeSuite(func() {
 
 	db, err := apid.Data().DB()
 	Expect(err).NotTo(HaveOccurred())
-
-	createApidClusterTables(db)
-	createTables(db)
-	insertTestData(db)
-	setDB(db)
+	initDb(db)
 
 	// required config uapServerBase is not set, thus init should panic
 	Expect(apid.InitializePlugins).To(Panic())
@@ -50,19 +47,74 @@ var _ = BeforeSuite(func() {
 	config.Set(uapServerBase, "http://localhost:9000") // dummy value
 	Expect(apid.InitializePlugins).ToNot(Panic())
 
+	// create initial cache for tenant and developer info
 	config.Set(useCaching, true)
+
 	createTenantCache()
 	Expect(len(tenantCache)).To(Equal(1))
 
 	createDeveloperInfoCache()
 	Expect(len(developerInfoCache)).To(Equal(1))
 
+	// Analytics POST API
 	router := apid.API().Router()
 	router.HandleFunc(analyticsBasePath+"/{bundle_scope_uuid}", func(w http.ResponseWriter, req *http.Request) {
 		saveAnalyticsRecord(w, req)
 	}).Methods("POST")
+
+	// Mock UAP collection endpoint
+	router.HandleFunc("/analytics", func(w http.ResponseWriter, req *http.Request) {
+		mockUAPCollection(w, req)
+	}).Methods("GET")
+
+	// fake AWS S3
+	router.HandleFunc("/upload", func(w http.ResponseWriter, req *http.Request) {
+		mockFinalDatastore(w, req)
+	}).Methods("PUT")
+
 	testServer = httptest.NewServer(router)
+
+	// ser serverbased to local so that responses can be mocked
+	config.Set(uapServerBase, testServer.URL)
 })
+
+func mockUAPCollection(w http.ResponseWriter, req *http.Request) {
+	if req.Header.Get("Authorization") == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+	} else {
+		if req.URL.Query().Get("tenant") == "testorg~testenv" {
+			w.WriteHeader(http.StatusOK)
+
+			body := make(map[string]interface{})
+			body["url"] = testServer.URL + "/upload?awskey=xxxx"
+			bytes, _ := json.Marshal(body)
+			w.Write(bytes)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}
+}
+
+func mockFinalDatastore(w http.ResponseWriter, req *http.Request) {
+	status := req.URL.Query().Get("expected_status")
+	switch status {
+	case "ok":
+		w.WriteHeader(http.StatusOK)
+	case "serverError":
+		w.WriteHeader(http.StatusInternalServerError)
+	case "forbidden":
+		w.WriteHeader(http.StatusForbidden)
+	default:
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func initDb(db apid.DB) {
+	createApidClusterTables(db)
+	createTables(db)
+	insertTestData(db)
+	setDB(db)
+}
 
 func createTables(db apid.DB) {
 	_, err := db.Exec(`
