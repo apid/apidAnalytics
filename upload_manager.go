@@ -104,6 +104,7 @@ func retryFailedUploads() {
 				log.Errorf("Cannot move directory '%s'"+
 					" from failed to staging folder", dir.Name())
 			}
+			cnt++
 		} else {
 			break
 		}
