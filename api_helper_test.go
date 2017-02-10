@@ -21,7 +21,7 @@ var _ = Describe("test valid() directly", func() {
 			raw := getRaw(record)
 			valid, e := validate(raw)
 
-			Expect(valid).To(Equal(false))
+			Expect(valid).To(BeFalse())
 			Expect(e.ErrorCode).To(Equal("MISSING_FIELD"))
 
 			By("payload with clst > clet")
@@ -34,7 +34,7 @@ var _ = Describe("test valid() directly", func() {
 			raw = getRaw(record)
 			valid, e = validate(raw)
 
-			Expect(valid).To(Equal(false))
+			Expect(valid).To(BeFalse())
 			Expect(e.ErrorCode).To(Equal("BAD_DATA"))
 			Expect(e.Reason).To(Equal("client_received_start_timestamp > client_received_end_timestamp"))
 
@@ -50,7 +50,7 @@ var _ = Describe("test valid() directly", func() {
 				}`)
 			raw := getRaw(record)
 			valid, _ := validate(raw)
-			Expect(valid).To(Equal(true))
+			Expect(valid).To(BeTrue())
 		})
 	})
 })

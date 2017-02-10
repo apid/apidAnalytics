@@ -122,23 +122,10 @@ var _ = Describe("test closeBucketChannel()", func() {
 			time.Sleep(time.Second * 2)
 
 			expectedDirPath := filepath.Join(localAnalyticsStagingDir, dirName)
-			status, _ := exists(expectedDirPath)
-			Expect(status).To(BeTrue())
+			Expect(expectedDirPath).To(BeADirectory())
 
 			expectedfilePath := filepath.Join(localAnalyticsStagingDir, dirName, fileName)
-			status, _ = exists(expectedfilePath)
-			Expect(status).To(BeTrue())
+			Expect(expectedfilePath).To(BeAnExistingFile())
 		})
 	})
 })
-
-func exists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return true, err
-}

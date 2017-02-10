@@ -144,7 +144,7 @@ var _ = Describe("ApigeeSync event", func() {
 
 				handler.Handle(&delete)
 				_, exists := tenantCache["i2"]
-				Expect(exists).To(Equal(false))
+				Expect(exists).To(BeFalse())
 			})
 		})
 	})
