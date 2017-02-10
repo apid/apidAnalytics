@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 const (
@@ -29,7 +30,7 @@ const (
 	// Number of slots for internal channel buffering of
 	// analytics records before they are dumped to a file
 	analyticsBufferChannelSize        = "apidanalytics_buffer_channel_size"
-	analyticsBufferChannelSizeDefault = 100
+	analyticsBufferChannelSizeDefault = 1000
 
 	// EdgeX endpoint base path to access Uap Collection Endpoint
 	uapServerBase = "apidanalytics_uap_server_base"
@@ -38,7 +39,11 @@ const (
 	// info will be maintained in-memory
 	// cache to avoid DB calls for each analytics message
 	useCaching        = "apidanalytics_use_caching"
-	useCachingDefault = true
+	useCachingDefault = false
+
+	// Interval in seconds when the developer cache should be refreshed
+	analyticsCacheRefreshInterval         = "apidanalytics_cache_refresh_interval"
+	analyticsCacheRefreshIntervaleDefault = 1800
 )
 
 // keep track of the services that this plugin will use
@@ -122,6 +127,22 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 	// for new messages and dump them to files
 	initBufferingManager()
 
+	// Initialize developerInfo cache invalidation periodically
+	if config.GetBool(useCaching) {
+		updateDeveloperInfoCache()
+		go func() {
+			ticker := time.NewTicker(time.Second *
+				config.GetDuration(analyticsCacheRefreshInterval))
+			// Ticker will keep running till go routine is running
+			// i.e. till application is running
+			defer ticker.Stop()
+
+			for range ticker.C {
+				updateDeveloperInfoCache()
+			}
+		}()
+	}
+
 	// Initialize API's and expose them
 	initAPI(services)
 	log.Debug("end init for apidAnalytics plugin")
@@ -152,6 +173,9 @@ func setConfig(services apid.Services) error {
 
 	// set default config for useCaching
 	config.SetDefault(useCaching, useCachingDefault)
+
+	// set default config for cache refresh interval
+	config.SetDefault(analyticsCacheRefreshInterval, analyticsCacheRefreshIntervaleDefault)
 
 	// set default config for upload interval
 	config.SetDefault(analyticsUploadInterval, analyticsUploadIntervalDefault)

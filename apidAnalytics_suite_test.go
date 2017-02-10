@@ -47,15 +47,6 @@ var _ = BeforeSuite(func() {
 	config.Set(uapServerBase, "http://localhost:9000") // dummy value
 	Expect(apid.InitializePlugins).ToNot(Panic())
 
-	// create initial cache for tenant and developer info
-	config.Set(useCaching, true)
-
-	createTenantCache()
-	Expect(len(tenantCache)).To(Equal(1))
-
-	createDeveloperInfoCache()
-	Expect(len(developerInfoCache)).To(Equal(1))
-
 	// Analytics POST API
 	router := apid.API().Router()
 	router.HandleFunc(analyticsBasePath+"/{bundle_scope_uuid}", func(w http.ResponseWriter, req *http.Request) {
