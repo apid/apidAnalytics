@@ -96,6 +96,9 @@ var _ = Describe("test createWriteAndCloseFile()", func() {
 			Expect(record["response_status_code"]).To(Equal(json.Number("200")))
 			Expect(record["client_received_start_timestamp"]).To(Equal(json.Number("1486406248277")))
 			Expect(record["client_received_end_timestamp"]).To(Equal(json.Number("1486406248290")))
+
+			err = os.Remove(completeFilePath)
+			Expect(err).ToNot((HaveOccurred()))
 		})
 	})
 })
