@@ -146,22 +146,24 @@ func enrich(recordMap map[string]interface{}, scopeuuid string, tenant tenant) {
 	// apiKey doesnt exist then ignore adding developer fields
 	if exists {
 		apiKey := apiKey.(string)
-		devInfo := getDeveloperInfo(tenant.TenantId, apiKey)
-		_, exists := recordMap["api_product"]
-		if !exists {
-			recordMap["api_product"] = devInfo.ApiProduct
-		}
-		_, exists = recordMap["developer_app"]
-		if !exists {
-			recordMap["developer_app"] = devInfo.DeveloperApp
-		}
-		_, exists = recordMap["developer_email"]
-		if !exists {
-			recordMap["developer_email"] = devInfo.DeveloperEmail
-		}
-		_, exists = recordMap["developer"]
-		if !exists {
-			recordMap["developer"] = devInfo.Developer
+		if apiKey != "" {
+			devInfo := getDeveloperInfo(tenant.TenantId, apiKey)
+			_, exists := recordMap["api_product"]
+			if !exists {
+				recordMap["api_product"] = devInfo.ApiProduct
+			}
+			_, exists = recordMap["developer_app"]
+			if !exists {
+				recordMap["developer_app"] = devInfo.DeveloperApp
+			}
+			_, exists = recordMap["developer_email"]
+			if !exists {
+				recordMap["developer_email"] = devInfo.DeveloperEmail
+			}
+			_, exists = recordMap["developer"]
+			if !exists {
+				recordMap["developer"] = devInfo.Developer
+			}
 		}
 	}
 }

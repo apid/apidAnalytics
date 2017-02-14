@@ -70,13 +70,15 @@ func processChange(changes *common.ChangeList) {
 						ele.Get("scope", &tenantid)
 						ele.Get("org", &org)
 						ele.Get("env", &env)
-						tenantCache[scopeuuid] = tenant{
-							Org:      org,
-							Env:      env,
-							TenantId: tenantid}
-						log.Debugf("Refreshed local "+
-							"tenantCache. Added "+
-							"scope: "+"%s", scopeuuid)
+						if scopeuuid != "" {
+							tenantCache[scopeuuid] = tenant{
+								Org:      org,
+								Env:      env,
+								TenantId: tenantid}
+							log.Debugf("Refreshed local "+
+								"tenantCache. Added "+
+								"scope: "+"%s", scopeuuid)
+						}
 					}
 				case common.Delete:
 					rows = append(rows, payload.OldRow)
@@ -87,10 +89,12 @@ func processChange(changes *common.ChangeList) {
 					for _, ele := range rows {
 						var scopeuuid string
 						ele.Get("id", &scopeuuid)
-						delete(tenantCache, scopeuuid)
-						log.Debugf("Refreshed local"+
-							" tenantCache. Deleted"+
-							" scope: %s", scopeuuid)
+						if scopeuuid != "" {
+							delete(tenantCache, scopeuuid)
+							log.Debugf("Refreshed local"+
+								" tenantCache. Deleted"+
+								" scope: %s", scopeuuid)
+						}
 					}
 				}
 			}

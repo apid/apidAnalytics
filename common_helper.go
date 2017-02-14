@@ -38,10 +38,11 @@ func createTenantCache(snapshot *common.Snapshot) {
 				row.Get("scope", &tenantId)
 				row.Get("org", &org)
 				row.Get("env", &env)
-
-				tenantCache[id] = tenant{Org: org,
-					Env:      env,
-					TenantId: tenantId}
+				if id != "" {
+					tenantCache[id] = tenant{Org: org,
+						Env:      env,
+						TenantId: tenantId}
+				}
 			}
 		}
 	}
