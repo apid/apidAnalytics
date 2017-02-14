@@ -22,8 +22,8 @@ var _ = Describe("test handleUploadDirStatus()", func() {
 			Expect(e).ShouldNot(HaveOccurred())
 			handleUploadDirStatus(info, true)
 
-			status, _ := exists(dirPath)
-			Expect(status).To(BeFalse())
+			Expect(dirPath).ToNot(BeADirectory())
+
 			_, exists := retriesMap[dirName]
 			Expect(exists).To(BeFalse())
 		})
@@ -43,8 +43,7 @@ var _ = Describe("test handleUploadDirStatus()", func() {
 			for i := 1; i < maxRetries; i++ {
 				handleUploadDirStatus(info, false)
 
-				status, _ := exists(dirPath)
-				Expect(status).To(BeTrue())
+				Expect(dirPath).To(BeAnExistingFile())
 
 				cnt, exists := retriesMap[dirName]
 				Expect(exists).To(BeTrue())
@@ -55,9 +54,7 @@ var _ = Describe("test handleUploadDirStatus()", func() {
 			handleUploadDirStatus(info, false)
 
 			failedPath := filepath.Join(localAnalyticsFailedDir, dirName)
-
-			status, _ := exists(failedPath)
-			Expect(status).To(BeTrue())
+			Expect(failedPath).To(BeADirectory())
 
 			_, exists := retriesMap[dirName]
 			Expect(exists).To(BeFalse())
@@ -79,11 +76,8 @@ var _ = Describe("test retryFailedUploads()", func() {
 			stagingPath := filepath.Join(localAnalyticsStagingDir, dirName)
 
 			// move from failed to staging directory
-			status, _ := exists(dirPath)
-			Expect(status).To(BeFalse())
-
-			status, _ = exists(stagingPath)
-			Expect(status).To(BeTrue())
+			Expect(dirPath).ToNot(BeADirectory())
+			Expect(stagingPath).To(BeADirectory())
 		})
 		It("if multiple folders, then move only configured batch at a time", func() {
 			for i := 1; i < (retryFailedDirBatchSize * 2); i++ {

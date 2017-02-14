@@ -44,9 +44,7 @@ var _ = Describe("test uploadDir()", func() {
 
 			status := uploadDir(dir)
 			Expect(status).To(BeTrue())
-
-			e, _ := exists(fp)
-			Expect(e).To(BeFalse())
+			Expect(fp).ToNot(BeAnExistingFile())
 		})
 	})
 	Context("invalid tenant", func() {
@@ -60,9 +58,7 @@ var _ = Describe("test uploadDir()", func() {
 
 			status := uploadDir(dir)
 			Expect(status).To(BeFalse())
-
-			e, _ := exists(fp)
-			Expect(e).To(BeTrue())
+			Expect(fp).To(BeAnExistingFile())
 		})
 	})
 })
@@ -86,7 +82,6 @@ var _ = Describe("test getSignedUrl()", func() {
 			url, err := getSignedUrl(tenant, relativeFilePath)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(url).ShouldNot(Equal(""))
-			log.Debugf(url)
 		})
 	})
 })

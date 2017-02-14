@@ -14,20 +14,21 @@ runtime traffic from Micro and Enterprise Gateway and puplishing to Apigee.
 | apidanalytics_uap_server_base         | string. url. required.            |
 | apidanalytics_use_caching             | boolean. default: true            |
 | apidanalytics_buffer_channel_size     | int. number of slots. default: 100|
+| apidanalytics_cache_refresh_interval  | int. seconds. default: 1800       |
 
 ### Startup Procedure
 1. Initialize crash recovery, upload and buffering manager to handle buffering analytics messages to files
    locally and then periodically upload these files to S3/GCS based on signedURL received from
    uapCollectionEndpoint exposed via edgex proxy
 2. Create a listener for Apigee-Sync event
-    1. Each time a Snapshot is received, create an in-memory cache for data scope and developer information
-    2. Each time a changeList is received
-        1. if data_scope info changed, then insert/delete info for changed scope from tenantCache
-        2. if any other kms table is changed, then refresh entire developerInfo cache as only specific
-           fields are saved in the cache
+    1. Each time a Snapshot is received, create an in-memory cache for data scope
+    2. Each time a changeList is received, if data_scope info changed, then insert/delete info for changed scope from tenantCache
+    3. Developer info cache will be invalidated periodically and populated when 1st request for that apiKey comes in
 3. Initialize POST /analytics/{scope_uuid} API
 4. Upon receiving POST requests
     1. Validate and enrich each batch of analytics records
+        1. If developerCache does not have info for apiKey then get from DB and insert into cache.
+           This way the cache will only have info for developers/app with active traffic
     2. If valid, then publish records to an internal buffer channel
 5. Buffering Logic
     1. Buffering manager creates listener on the internal buffer channel and thus consumes messages
