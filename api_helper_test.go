@@ -36,8 +36,23 @@ var _ = Describe("test valid() directly", func() {
 
 			Expect(valid).To(BeFalse())
 			Expect(e.ErrorCode).To(Equal("BAD_DATA"))
-			Expect(e.Reason).To(Equal("client_received_start_timestamp > client_received_end_timestamp"))
+			Expect(e.Reason).To(Equal("client_received_start_timestamp " +
+				"> client_received_end_timestamp"))
 
+			By("payload with clst = 0")
+			record = []byte(`{
+						"response_status_code": 200,
+						"client_id":"testapikey",
+						"client_received_start_timestamp": 0,
+						"client_received_end_timestamp": 1486406248260
+					}`)
+			raw = getRaw(record)
+			valid, e = validate(raw)
+
+			Expect(valid).To(BeFalse())
+			Expect(e.ErrorCode).To(Equal("BAD_DATA"))
+			Expect(e.Reason).To(Equal("client_received_start_timestamp or " +
+				"> client_received_end_timestamp cannot be 0"))
 		})
 	})
 	Context("valid record", func() {

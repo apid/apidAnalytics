@@ -101,11 +101,11 @@ func validateEnrichPublish(tenant tenant, scopeuuid string, reader io.Reader) er
 
 /*
 Does basic validation on each analytics message
-1. client_received_start_timestamp should exist
-2. if client_received_end_timestamp exists then it should be > client_received_start_timestamp
+1. client_received_start_timestamp, client_received_end_timestamp should exist
+2. client_received_end_timestamp should be > client_received_start_timestamp and not 0
 */
 func validate(recordMap map[string]interface{}) (bool, errResponse) {
-	elems := []string{"client_received_start_timestamp"}
+	elems := []string{"client_received_start_timestamp", "client_received_end_timestamp"}
 	for _, elem := range elems {
 		if recordMap[elem] == nil {
 			return false, errResponse{
@@ -117,7 +117,12 @@ func validate(recordMap map[string]interface{}) (bool, errResponse) {
 	crst, exists1 := recordMap["client_received_start_timestamp"]
 	cret, exists2 := recordMap["client_received_end_timestamp"]
 	if exists1 && exists2 {
-		if crst.(json.Number) > cret.(json.Number) {
+		if crst.(json.Number) == json.Number("0") || cret.(json.Number) == json.Number("0") {
+			return false, errResponse{
+				ErrorCode: "BAD_DATA",
+				Reason: "client_received_start_timestamp or " +
+					"> client_received_end_timestamp cannot be 0"}
+		} else if crst.(json.Number) > cret.(json.Number) {
 			return false, errResponse{
 				ErrorCode: "BAD_DATA",
 				Reason: "client_received_start_timestamp " +
