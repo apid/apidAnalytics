@@ -146,7 +146,7 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 	// Create a listener for shutdown event and register callback
 	h := func(event apid.Event) {
 		log.Infof("Received ApidShutdown event. %v", event)
-		shutdownPlugin();
+		shutdownPlugin()
 		return
 	}
 	log.Infof("registered listener for shutdown event")
@@ -228,10 +228,10 @@ func shutdownPlugin() {
 		if err != nil {
 			log.Errorf("Cannot move directory '%s' from"+
 				" tmp to staging folder due to '%s", bucket.DirName, err)
+		} else {
+			bucketMaplock.Lock()
+			delete(bucketMap, bucket.keyTS)
+			bucketMaplock.Unlock()
 		}
-
-		bucketMaplock.Lock()
-		delete(bucketMap, bucket.keyTS)
-		bucketMaplock.Unlock()
 	}
 }

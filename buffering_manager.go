@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 	"sync"
+	"time"
 )
 
 const fileExtension = ".txt.gz"
@@ -30,7 +30,7 @@ var bucketMap map[int64]bucket
 var bucketMaplock = sync.RWMutex{}
 
 type bucket struct {
-	keyTS int64
+	keyTS   int64
 	DirName string
 	// We need file handle and writer to close the file
 	FileWriter fileWriter
@@ -51,7 +51,6 @@ func initBufferingManager() {
 	bucketMaplock.Lock()
 	bucketMap = make(map[int64]bucket)
 	bucketMaplock.Unlock()
-
 
 	// Keep polling the internal buffer for new messages
 	go func() {
@@ -81,14 +80,14 @@ func initBufferingManager() {
 			// staging to indicate its ready for upload
 			err := os.Rename(dirToBeClosed, stagingPath)
 			if err != nil {
-				log.Errorf("Cannot move directory '%s' from" +
+				log.Errorf("Cannot move directory '%s' from"+
 					" tmp to staging folder due to '%s", bucket.DirName, err)
+			} else {
+				// Remove bucket from bucket map once its closed successfully
+				bucketMaplock.Lock()
+				delete(bucketMap, bucket.keyTS)
+				bucketMaplock.Unlock()
 			}
-
-			// Remove bucket from bucket map once its closed successfully
-			bucketMaplock.Lock()
-			delete(bucketMap, bucket.keyTS)
-			bucketMaplock.Unlock()
 		}
 	}()
 }
