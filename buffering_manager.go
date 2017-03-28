@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"sync"
 )
 
 const fileExtension = ".txt.gz"
@@ -24,7 +25,12 @@ var closeBucketEvent chan bucket
 // Map from timestampt to bucket
 var bucketMap map[int64]bucket
 
+// RW lock for bucketMap  since the cache can be
+// read while its being written to and vice versa
+var bucketMaplock = sync.RWMutex{}
+
 type bucket struct {
+	keyTS int64
 	DirName string
 	// We need file handle and writer to close the file
 	FileWriter fileWriter
@@ -41,7 +47,11 @@ func initBufferingManager() {
 	internalBuffer = make(chan axRecords,
 		config.GetInt(analyticsBufferChannelSize))
 	closeBucketEvent = make(chan bucket)
+
+	bucketMaplock.Lock()
 	bucketMap = make(map[int64]bucket)
+	bucketMaplock.Unlock()
+
 
 	// Keep polling the internal buffer for new messages
 	go func() {
@@ -71,9 +81,14 @@ func initBufferingManager() {
 			// staging to indicate its ready for upload
 			err := os.Rename(dirToBeClosed, stagingPath)
 			if err != nil {
-				log.Errorf("Cannot move directory '%s' from"+
-					" tmp to staging folder", bucket.DirName)
+				log.Errorf("Cannot move directory '%s' from" +
+					" tmp to staging folder due to '%s", bucket.DirName, err)
 			}
+
+			// Remove bucket from bucket map once its closed successfully
+			bucketMaplock.Lock()
+			delete(bucketMap, bucket.keyTS)
+			bucketMaplock.Unlock()
 		}
 	}()
 }
@@ -92,9 +107,13 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 	// first based on current timestamp and collection interval,
 	// determine the timestamp of the bucket
 	ts := now.Unix() / int64(config.GetInt(analyticsCollectionInterval)) * int64(config.GetInt(analyticsCollectionInterval))
-	_, exists := bucketMap[ts]
+
+	bucketMaplock.RLock()
+	b, exists := bucketMap[ts]
+	bucketMaplock.RUnlock()
+
 	if exists {
-		return bucketMap[ts], nil
+		return b, nil
 	} else {
 		timestamp := time.Unix(ts, 0).Format(timestampLayout)
 
@@ -123,8 +142,11 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 			return bucket{}, err
 		}
 
-		newBucket := bucket{DirName: dirName, FileWriter: fw}
+		newBucket := bucket{keyTS: ts, DirName: dirName, FileWriter: fw}
+
+		bucketMaplock.Lock()
 		bucketMap[ts] = newBucket
+		bucketMaplock.Unlock()
 
 		//Send event to close directory after endTime + 5
 		// seconds to make sure all buffers are flushed to file
