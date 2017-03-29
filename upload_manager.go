@@ -47,7 +47,7 @@ func initUploadManager() {
 					handleUploadDirStatus(file, status)
 					if status {
 						uploadedDirCnt++
-						log.Infof("Successfully uploaded: %s",
+						log.Debugf("Successfully uploaded: %s",
 							file.Name())
 					}
 				}

@@ -213,9 +213,24 @@ func createDirectories(directories []string) error {
 func shutdownPlugin() {
 	log.Info("Shutting down apidAnalytics plugin")
 
+	// close channel so new records cannot be inserted
+	close(internalBuffer)
+	log.Debugf("sent signal to close internal buffer channel")
+
+	// close channel so new events for closing bucket cannot be posted
+	close(closeBucketEvent)
+	log.Debugf("sent signal to close closebucketevent channel")
+
+	// block on channel to ensure channel is closed
+	<- doneInternalBufferChan
+	log.Debugf("closed internal buffer channel successfully")
+
+	// block on channel to ensure channel is closed
+	<- doneClosebucketChan
+	log.Debugf("closed closebucketevent channel successfully")
+
 	// Close all open files and move directories in tmp to staging.
 	bucketMaplock.RLock()
-	defer bucketMaplock.RUnlock()
 	for _, bucket := range bucketMap {
 		log.Infof("closing bucket '%s' as a part of shutdown", bucket.DirName)
 		closeGzipFile(bucket.FileWriter)
@@ -228,10 +243,12 @@ func shutdownPlugin() {
 		if err != nil {
 			log.Errorf("Cannot move directory '%s' from"+
 				" tmp to staging folder due to '%s", bucket.DirName, err)
-		} else {
-			bucketMaplock.Lock()
-			delete(bucketMap, bucket.keyTS)
-			bucketMaplock.Unlock()
 		}
 	}
+	bucketMaplock.RUnlock()
+
+	// Reset the map after all files are closed
+	bucketMaplock.Lock()
+	bucketMap = nil
+	bucketMaplock.Unlock()
 }
