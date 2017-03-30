@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -16,15 +17,24 @@ const fileExtension = ".txt.gz"
 // Channel where analytics records are buffered before being dumped to a
 // file as write to file should not performed in the Http Thread
 var internalBuffer chan axRecords
+// channel to indicate that internalBuffer channel is closed
+var doneInternalBufferChan chan bool
 
 // Channel where close bucket event is published i.e. when a bucket
 // is ready to be closed based on collection interval
 var closeBucketEvent chan bucket
+// channel to indicate that closeBucketEvent channel is closed
+var doneClosebucketChan chan bool
 
 // Map from timestampt to bucket
 var bucketMap map[int64]bucket
 
+// RW lock for bucketMap  since the cache can be
+// read while its being written to and vice versa
+var bucketMaplock = sync.RWMutex{}
+
 type bucket struct {
+	keyTS   int64
 	DirName string
 	// We need file handle and writer to close the file
 	FileWriter fileWriter
@@ -41,24 +51,30 @@ func initBufferingManager() {
 	internalBuffer = make(chan axRecords,
 		config.GetInt(analyticsBufferChannelSize))
 	closeBucketEvent = make(chan bucket)
+	doneInternalBufferChan = make(chan bool)
+	doneClosebucketChan = make(chan bool)
+
+	bucketMaplock.Lock()
 	bucketMap = make(map[int64]bucket)
+	bucketMaplock.Unlock()
 
 	// Keep polling the internal buffer for new messages
 	go func() {
-		for {
-			records := <-internalBuffer
+		for records := range internalBuffer {
 			err := save(records)
 			if err != nil {
 				log.Errorf("Could not save %d messages to file"+
 					" due to: %v", len(records.Records), err)
 			}
 		}
+		// indicates a close signal was sent on the channel
+		log.Debugf("Closing channel internal buffer")
+		doneInternalBufferChan <- true
 	}()
 
 	// Keep polling the closeEvent channel to see if bucket is ready to be closed
 	go func() {
-		for {
-			bucket := <-closeBucketEvent
+		for bucket := range closeBucketEvent {
 			log.Debugf("Close Event received for bucket: %s",
 				bucket.DirName)
 
@@ -71,10 +87,18 @@ func initBufferingManager() {
 			// staging to indicate its ready for upload
 			err := os.Rename(dirToBeClosed, stagingPath)
 			if err != nil {
-				log.Errorf("Cannot move directory '%s' from"+
-					" tmp to staging folder", bucket.DirName)
+				log.Errorf("Cannot move directory '%s' from" +
+					" tmp to staging folder due to '%s", bucket.DirName, err)
+			} else {
+				// Remove bucket from bucket map once its closed successfully
+				bucketMaplock.Lock()
+				delete(bucketMap, bucket.keyTS)
+				bucketMaplock.Unlock()
 			}
 		}
+		// indicates a close signal was sent on the channel
+		log.Debugf("Closing channel close bucketevent")
+		doneClosebucketChan <- true
 	}()
 }
 
@@ -92,9 +116,13 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 	// first based on current timestamp and collection interval,
 	// determine the timestamp of the bucket
 	ts := now.Unix() / int64(config.GetInt(analyticsCollectionInterval)) * int64(config.GetInt(analyticsCollectionInterval))
-	_, exists := bucketMap[ts]
+
+	bucketMaplock.RLock()
+	b, exists := bucketMap[ts]
+	bucketMaplock.RUnlock()
+
 	if exists {
-		return bucketMap[ts], nil
+		return b, nil
 	} else {
 		timestamp := time.Unix(ts, 0).Format(timestampLayout)
 
@@ -123,8 +151,11 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 			return bucket{}, err
 		}
 
-		newBucket := bucket{DirName: dirName, FileWriter: fw}
+		newBucket := bucket{keyTS: ts, DirName: dirName, FileWriter: fw}
+
+		bucketMaplock.Lock()
 		bucketMap[ts] = newBucket
+		bucketMaplock.Unlock()
 
 		//Send event to close directory after endTime + 5
 		// seconds to make sure all buffers are flushed to file

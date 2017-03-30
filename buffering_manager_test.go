@@ -118,7 +118,7 @@ var _ = Describe("test closeBucketChannel()", func() {
 			fw, e := createGzipFile(completeFilePath)
 			Expect(e).ShouldNot(HaveOccurred())
 
-			bucket := bucket{DirName: dirName, FileWriter: fw}
+			bucket := bucket{keyTS: 112312, DirName: dirName, FileWriter: fw}
 			closeBucketEvent <- bucket
 
 			// wait for it to close dir and move to staging

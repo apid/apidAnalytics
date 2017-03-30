@@ -143,6 +143,15 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 		}()
 	}
 
+	// Create a listener for shutdown event and register callback
+	h := func(event apid.Event) {
+		log.Infof("Received ApidShutdown event. %v", event)
+		shutdownPlugin()
+		return
+	}
+	log.Infof("registered listener for shutdown event")
+	events.ListenOnceFunc(apid.ShutdownEventSelector, h)
+
 	// Initialize API's and expose them
 	initAPI(services)
 	log.Debug("end init for apidAnalytics plugin")
@@ -199,4 +208,47 @@ func createDirectories(directories []string) error {
 		}
 	}
 	return nil
+}
+
+func shutdownPlugin() {
+	log.Info("Shutting down apidAnalytics plugin")
+
+	// close channel so new records cannot be inserted
+	close(internalBuffer)
+	log.Debugf("sent signal to close internal buffer channel")
+
+	// close channel so new events for closing bucket cannot be posted
+	close(closeBucketEvent)
+	log.Debugf("sent signal to close closebucketevent channel")
+
+	// block on channel to ensure channel is closed
+	<- doneInternalBufferChan
+	log.Debugf("closed internal buffer channel successfully")
+
+	// block on channel to ensure channel is closed
+	<- doneClosebucketChan
+	log.Debugf("closed closebucketevent channel successfully")
+
+	// Close all open files and move directories in tmp to staging.
+	bucketMaplock.RLock()
+	for _, bucket := range bucketMap {
+		log.Infof("closing bucket '%s' as a part of shutdown", bucket.DirName)
+		closeGzipFile(bucket.FileWriter)
+
+		dirToBeClosed := filepath.Join(localAnalyticsTempDir, bucket.DirName)
+		stagingPath := filepath.Join(localAnalyticsStagingDir, bucket.DirName)
+		// close files in tmp folder and move directory to
+		// staging to indicate its ready for upload
+		err := os.Rename(dirToBeClosed, stagingPath)
+		if err != nil {
+			log.Errorf("Cannot move directory '%s' from"+
+				" tmp to staging folder due to '%s", bucket.DirName, err)
+		}
+	}
+	bucketMaplock.RUnlock()
+
+	// Reset the map after all files are closed
+	bucketMaplock.Lock()
+	bucketMap = nil
+	bucketMaplock.Unlock()
 }
