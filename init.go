@@ -222,11 +222,11 @@ func shutdownPlugin() {
 	log.Debugf("sent signal to close closebucketevent channel")
 
 	// block on channel to ensure channel is closed
-	<- doneInternalBufferChan
+	<-doneInternalBufferChan
 	log.Debugf("closed internal buffer channel successfully")
 
 	// block on channel to ensure channel is closed
-	<- doneClosebucketChan
+	<-doneClosebucketChan
 	log.Debugf("closed closebucketevent channel successfully")
 
 	// Close all open files and move directories in tmp to staging.
