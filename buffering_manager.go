@@ -106,7 +106,7 @@ func initBufferingManager() {
 
 // Save records to correct file based on what timestamp data is being collected for
 func save(records axRecords) error {
-	bucket, err := getBucketForTimestamp(time.Now(), records.Tenant)
+	bucket, err := getBucketForTimestamp(time.Now().UTC(), records.Tenant)
 	if err != nil {
 		return err
 	}
@@ -126,11 +126,11 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 	if exists {
 		return b, nil
 	} else {
-		timestamp := time.Unix(ts, 0).Format(timestampLayout)
+		timestamp := time.Unix(ts, 0).UTC().Format(timestampLayout)
 
 		// endtimestamp of bucket = starttimestamp + collectionInterval
 		endTime := time.Unix(ts+int64(config.GetInt(analyticsCollectionInterval)), 0)
-		endtimestamp := endTime.Format(timestampLayout)
+		endtimestamp := endTime.UTC().Format(timestampLayout)
 
 		dirName := tenant.Org + "~" + tenant.Env + "~" + timestamp
 		newPath := filepath.Join(localAnalyticsTempDir, dirName)
@@ -161,7 +161,7 @@ func getBucketForTimestamp(now time.Time, tenant tenant) (bucket, error) {
 
 		//Send event to close directory after endTime + 5
 		// seconds to make sure all buffers are flushed to file
-		timer := time.After(endTime.Sub(time.Now()) + time.Second*5)
+		timer := time.After(endTime.Sub(time.Now().UTC()) + time.Second*5)
 		go func() {
 			<-timer
 			closeBucketEvent <- newBucket

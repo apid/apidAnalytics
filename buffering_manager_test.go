@@ -12,7 +12,7 @@ import (
 
 var _ = Describe("test getBucketForTimestamp()", func() {
 	It("should return new bucket or existing bucket if created previously", func() {
-		t := time.Date(2017, 1, 20, 10, 24, 5, 0, time.Local)
+		t := time.Date(2017, 1, 20, 10, 24, 5, 0, time.UTC)
 		tenant := tenant{Org: "testorg", Env: "testenv", TenantId: "tenantid"}
 
 		bucket, err := getBucketForTimestamp(t, tenant)
@@ -25,7 +25,7 @@ var _ = Describe("test getBucketForTimestamp()", func() {
 		Expect(fw.file.Name()).To(ContainSubstring("20170120102400.20170120102600"))
 
 		// Should return existing bucket if same interval timestamp is passed
-		t2 := time.Date(2017, 1, 20, 10, 25, 5, 0, time.Local)
+		t2 := time.Date(2017, 1, 20, 10, 25, 5, 0, time.UTC)
 		bucket, err = getBucketForTimestamp(t2, tenant)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(bucket.DirName).To(Equal("testorg~testenv~20170120102400"))
