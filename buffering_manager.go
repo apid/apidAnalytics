@@ -17,12 +17,14 @@ const fileExtension = ".txt.gz"
 // Channel where analytics records are buffered before being dumped to a
 // file as write to file should not performed in the Http Thread
 var internalBuffer chan axRecords
+
 // channel to indicate that internalBuffer channel is closed
 var doneInternalBufferChan chan bool
 
 // Channel where close bucket event is published i.e. when a bucket
 // is ready to be closed based on collection interval
 var closeBucketEvent chan bucket
+
 // channel to indicate that closeBucketEvent channel is closed
 var doneClosebucketChan chan bool
 
@@ -87,7 +89,7 @@ func initBufferingManager() {
 			// staging to indicate its ready for upload
 			err := os.Rename(dirToBeClosed, stagingPath)
 			if err != nil {
-				log.Errorf("Cannot move directory '%s' from" +
+				log.Errorf("Cannot move directory '%s' from"+
 					" tmp to staging folder due to '%s", bucket.DirName, err)
 			} else {
 				// Remove bucket from bucket map once its closed successfully

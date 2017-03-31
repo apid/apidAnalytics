@@ -76,7 +76,7 @@ func getSignedUrl(tenant, relativeFilePath string) (string, error) {
 	// eg. date=2017-01-30/time=16-32/1069_20170130163200.20170130163400_218e3d99-efaf-4a7b-b3f2-5e4b00c023b7_writer_0.txt.gz
 	q.Add("relative_file_path", relativeFilePath)
 	q.Add("file_content_type", "application/x-gzip")
-	q.Add("encrypt","true")
+	q.Add("encrypt", "true")
 	req.URL.RawQuery = q.Encode()
 
 	// Add Bearer Token to each request
