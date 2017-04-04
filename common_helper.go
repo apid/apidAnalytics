@@ -135,7 +135,7 @@ func getTenantFromDB(scopeuuid string) (tenant, dbError) {
 	var org, env, tenantId string
 
 	db := getDB()
-	error := db.QueryRow("SELECT env, org, scope FROM DATA_SCOPE"+
+	error := db.QueryRow("SELECT env, org, scope FROM edgex_DATA_SCOPE"+
 		" where id = ?", scopeuuid).Scan(&env, &org, &tenantId)
 
 	switch {
@@ -165,10 +165,10 @@ func getDevInfoFromDB(tenantId string, apiKey string) (developerInfo, error) {
 
 	db := getDB()
 	sSql := "SELECT ap.name, a.name, d.username, d.email " +
-		"FROM APP_CREDENTIAL_APIPRODUCT_MAPPER as mp " +
-		"INNER JOIN API_PRODUCT as ap ON ap.id = mp.apiprdt_id " +
-		"INNER JOIN APP AS a ON a.id = mp.app_id " +
-		"INNER JOIN DEVELOPER as d ON d.id = a.developer_id " +
+		"FROM kms_APP_CREDENTIAL_APIPRODUCT_MAPPER as mp " +
+		"INNER JOIN kms_API_PRODUCT as ap ON ap.id = mp.apiprdt_id " +
+		"INNER JOIN kms_APP AS a ON a.id = mp.app_id " +
+		"INNER JOIN kms_DEVELOPER as d ON d.id = a.developer_id " +
 		"where mp.tenant_id = ? and mp.appcred_id = ?;"
 	error := db.QueryRow(sSql, tenantId, apiKey).
 		Scan(&apiProduct, &developerApp,

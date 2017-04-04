@@ -1,2 +1,4 @@
 cover.html
 coverage.txt
+*.iml
+.idea
