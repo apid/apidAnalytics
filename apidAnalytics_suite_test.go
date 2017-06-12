@@ -41,11 +41,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	initDb(db)
 
-	// required config uapServerBase is not set, thus init should panic
-	Expect(apid.InitializePlugins).To(Panic())
-
 	config.Set(uapServerBase, "http://localhost:9000") // dummy value
-	Expect(apid.InitializePlugins).ToNot(Panic())
+	apid.InitializePlugins("")
 
 	// Analytics POST API
 	router := apid.API().Router()
