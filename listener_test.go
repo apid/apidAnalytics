@@ -86,7 +86,7 @@ var _ = Describe("ApigeeSync event", func() {
 			It("insert/delete event should add/remove to/from cache if usecaching is true", func() {
 				txn, err := getDB().Begin()
 				Expect(err).ShouldNot(HaveOccurred())
-				txn.Exec("INSERT INTO DATA_SCOPE (id, _change_selector, apid_cluster_id, scope, org, env) "+
+				txn.Exec("INSERT INTO edgex_data_scope (id, _change_selector, apid_cluster_id, scope, org, env) "+
 					"VALUES"+
 					"($1,$2,$3,$4,$5,$6)",
 					"i2",
@@ -128,7 +128,7 @@ var _ = Describe("ApigeeSync event", func() {
 
 				txn, err = getDB().Begin()
 				Expect(err).ShouldNot(HaveOccurred())
-				txn.Exec("DELETE FROM DATA_SCOPE where id = 'i2'")
+				txn.Exec("DELETE FROM edgex_data_scope where id = 'i2'")
 				txn.Commit()
 
 				delete := common.ChangeList{

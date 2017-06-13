@@ -41,11 +41,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	initDb(db)
 
-	// required config uapServerBase is not set, thus init should panic
-	Expect(apid.InitializePlugins).To(Panic())
-
 	config.Set(uapServerBase, "http://localhost:9000") // dummy value
-	Expect(apid.InitializePlugins).ToNot(Panic())
+	apid.InitializePlugins("")
 
 	// Analytics POST API
 	router := apid.API().Router()
@@ -109,7 +106,7 @@ func initDb(db apid.DB) {
 
 func createTables(db apid.DB) {
 	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS api_product (
+		CREATE TABLE IF NOT EXISTS kms_api_product (
 		    id text,
 		    tenant_id text,
 		    name text,
@@ -128,7 +125,7 @@ func createTables(db apid.DB) {
 		    updated_at int64,
 		    updated_by text,
 		    PRIMARY KEY (tenant_id, id));
-		CREATE TABLE IF NOT EXISTS developer (
+		CREATE TABLE IF NOT EXISTS kms_developer (
 		    id text,
 		    tenant_id text,
 		    username text,
@@ -146,7 +143,7 @@ func createTables(db apid.DB) {
 		    updated_by text,
 		    PRIMARY KEY (tenant_id, id)
 		);
-		CREATE TABLE IF NOT EXISTS app (
+		CREATE TABLE IF NOT EXISTS kms_app (
 		    id text,
 		    tenant_id text,
 		    name text,
@@ -165,7 +162,7 @@ func createTables(db apid.DB) {
 		    _change_selector text,
 		    PRIMARY KEY (tenant_id, id)
 		);
-		CREATE TABLE IF NOT EXISTS app_credential_apiproduct_mapper (
+		CREATE TABLE IF NOT EXISTS kms_app_credential_apiproduct_mapper (
 		    tenant_id text,
 		    appcred_id text,
 		    app_id text,
@@ -182,7 +179,7 @@ func createTables(db apid.DB) {
 
 func createApidClusterTables(db apid.DB) {
 	_, err := db.Exec(`
-		CREATE TABLE apid_cluster (
+		CREATE TABLE edgex_apid_cluster (
 		    id text,
 		    instance_id text,
 		    name text,
@@ -197,7 +194,7 @@ func createApidClusterTables(db apid.DB) {
 		    lastSequence text,
 		    PRIMARY KEY (id)
 		);
-		CREATE TABLE data_scope (
+		CREATE TABLE edgex_data_scope (
 		    id text,
 		    apid_cluster_id text,
 		    scope text,
@@ -220,7 +217,7 @@ func insertTestData(db apid.DB) {
 
 	txn, err := db.Begin()
 	Expect(err).ShouldNot(HaveOccurred())
-	txn.Exec("INSERT INTO APP_CREDENTIAL_APIPRODUCT_MAPPER (tenant_id,"+
+	txn.Exec("INSERT INTO kms_app_credential_apiproduct_mapper (tenant_id,"+
 		" appcred_id, app_id, apiprdt_id, status, _change_selector) "+
 		"VALUES"+
 		"($1,$2,$3,$4,$5,$6)",
@@ -232,7 +229,7 @@ func insertTestData(db apid.DB) {
 		"12345",
 	)
 
-	txn.Exec("INSERT INTO APP (id, tenant_id, name, developer_id) "+
+	txn.Exec("INSERT INTO kms_app (id, tenant_id, name, developer_id) "+
 		"VALUES"+
 		"($1,$2,$3,$4)",
 		"testappid",
@@ -241,7 +238,7 @@ func insertTestData(db apid.DB) {
 		"testdeveloperid",
 	)
 
-	txn.Exec("INSERT INTO API_PRODUCT (id, tenant_id, name) "+
+	txn.Exec("INSERT INTO kms_api_product (id, tenant_id, name) "+
 		"VALUES"+
 		"($1,$2,$3)",
 		"testproductid",
@@ -249,7 +246,7 @@ func insertTestData(db apid.DB) {
 		"testproduct",
 	)
 
-	txn.Exec("INSERT INTO DEVELOPER (id, tenant_id, username, email) "+
+	txn.Exec("INSERT INTO kms_developer (id, tenant_id, username, email) "+
 		"VALUES"+
 		"($1,$2,$3,$4)",
 		"testdeveloperid",
@@ -258,7 +255,7 @@ func insertTestData(db apid.DB) {
 		"testdeveloper@test.com",
 	)
 
-	txn.Exec("INSERT INTO DATA_SCOPE (id, _change_selector, "+
+	txn.Exec("INSERT INTO edgex_data_scope (id, _change_selector, "+
 		"apid_cluster_id, scope, org, env) "+
 		"VALUES"+
 		"($1,$2,$3,$4,$5,$6)",
