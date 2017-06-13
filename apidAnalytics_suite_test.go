@@ -217,7 +217,7 @@ func insertTestData(db apid.DB) {
 
 	txn, err := db.Begin()
 	Expect(err).ShouldNot(HaveOccurred())
-	txn.Exec("INSERT INTO kms_APP_CREDENTIAL_APIPRODUCT_MAPPER (tenant_id,"+
+	txn.Exec("INSERT INTO kms_app_credential_apiproduct_mapper (tenant_id,"+
 		" appcred_id, app_id, apiprdt_id, status, _change_selector) "+
 		"VALUES"+
 		"($1,$2,$3,$4,$5,$6)",
@@ -229,7 +229,7 @@ func insertTestData(db apid.DB) {
 		"12345",
 	)
 
-	txn.Exec("INSERT INTO kms_APP (id, tenant_id, name, developer_id) "+
+	txn.Exec("INSERT INTO kms_app (id, tenant_id, name, developer_id) "+
 		"VALUES"+
 		"($1,$2,$3,$4)",
 		"testappid",
@@ -238,7 +238,7 @@ func insertTestData(db apid.DB) {
 		"testdeveloperid",
 	)
 
-	txn.Exec("INSERT INTO kms_API_PRODUCT (id, tenant_id, name) "+
+	txn.Exec("INSERT INTO kms_api_product (id, tenant_id, name) "+
 		"VALUES"+
 		"($1,$2,$3)",
 		"testproductid",
@@ -246,7 +246,7 @@ func insertTestData(db apid.DB) {
 		"testproduct",
 	)
 
-	txn.Exec("INSERT INTO kms_DEVELOPER (id, tenant_id, username, email) "+
+	txn.Exec("INSERT INTO kms_developer (id, tenant_id, username, email) "+
 		"VALUES"+
 		"($1,$2,$3,$4)",
 		"testdeveloperid",
@@ -255,7 +255,7 @@ func insertTestData(db apid.DB) {
 		"testdeveloper@test.com",
 	)
 
-	txn.Exec("INSERT INTO edgex_DATA_SCOPE (id, _change_selector, "+
+	txn.Exec("INSERT INTO edgex_data_scope (id, _change_selector, "+
 		"apid_cluster_id, scope, org, env) "+
 		"VALUES"+
 		"($1,$2,$3,$4,$5,$6)",
