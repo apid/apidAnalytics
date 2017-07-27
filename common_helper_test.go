@@ -70,21 +70,23 @@ var _ = Describe("test getTenantForScope()", func() {
 })
 
 var _ = Describe("test getTenantFromDB()", func() {
-	Context("get developerInfo for valid scopeuuid", func() {
-		It("should return all right data", func() {
+	Context("get tenant for valid scopeuuid", func() {
+		It("should return testorg and testenv", func() {
 			tenant, dbError := getTenantFromDB("testid")
 			Expect(dbError.Reason).To(Equal(""))
 			Expect(tenant.TenantId).To(Equal("tenantid"))
+			Expect(tenant.Org).To(Equal("testorg"))
+			Expect(tenant.Env).To(Equal("testenv"))
+
 		})
 	})
-	Context("get developerInfo for invalid scopeuuid", func() {
-		It("should return error", func() {
+	Context("get tenant for invalid scopeuuid", func() {
+		It("should return error with unknown scope", func() {
 			tenant, dbError := getTenantFromDB("wrongid")
 			Expect(tenant.Org).To(Equal(""))
 			Expect(dbError.ErrorCode).To(Equal("UNKNOWN_SCOPE"))
 		})
 	})
-
 })
 
 var _ = Describe("test getDeveloperInfo()", func() {
@@ -149,6 +151,27 @@ var _ = Describe("test getDevInfoFromDB()", func() {
 			developerInfo, err := getDevInfoFromDB("wrongid", "wrongapikey")
 			Expect(err).To(HaveOccurred())
 			Expect(developerInfo.ApiProduct).To(Equal(""))
+		})
+	})
+
+})
+
+var _ = Describe("test validateTenant()", func() {
+	Context("validate tenant for org/env that exists in DB", func() {
+		It("should not return an error and tenantId should be populated", func() {
+			tenant := tenant{Org: "testorg", Env: "testenv"}
+			valid, dbError := validateTenant(&tenant)
+			Expect(valid).To(BeTrue())
+			Expect(tenant.TenantId).To(Equal("tenantid"))
+			Expect(dbError.ErrorCode).To(Equal(""))
+		})
+	})
+	Context("validate tenant for org/env that do not exist in DB", func() {
+		It("should return error with unknown_scope", func() {
+			tenant := tenant{Org: "wrongorg", Env: "wrongenv"}
+			valid, dbError := validateTenant(&tenant)
+			Expect(valid).To(BeFalse())
+			Expect(dbError.ErrorCode).To(Equal("UNKNOWN_SCOPE"))
 		})
 	})
 

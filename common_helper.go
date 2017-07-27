@@ -172,6 +172,32 @@ func getTenantFromDB(scopeuuid string) (tenant, dbError) {
 		TenantId: tenantId}, dbError{}
 }
 
+/*
+Checks if given org/env exists is a valid scope for this apid cluster
+It also stores the scope i.e. tenant_id in the tenant object using pointer.
+tenant_id in combination with apiKey is used to find kms related information
+*/
+func validateTenant(tenant *tenant) (bool, dbError) {
+	db := getDB()
+	error := db.QueryRow("SELECT scope FROM edgex_data_scope"+
+		" where org = ? and env = ?", &tenant.Org, &tenant.Env).Scan(&tenant.TenantId)
+	switch {
+	case error == sql.ErrNoRows:
+		reason := "No tenant found for this org: " + tenant.Org + " and env:" + tenant.Env
+		errorCode := "UNKNOWN_SCOPE"
+		return false, dbError{
+			ErrorCode: errorCode,
+			Reason:    reason}
+	case error != nil:
+		reason := error.Error()
+		errorCode := "INTERNAL_SEARCH_ERROR"
+		return false, dbError{
+			ErrorCode: errorCode,
+			Reason:    reason}
+	}
+	return true, dbError{}
+}
+
 // Returns developer info by querying DB directly
 func getDevInfoFromDB(tenantId string, apiKey string) (developerInfo, error) {
 	var apiProduct, developerApp, developerEmail sql.NullString

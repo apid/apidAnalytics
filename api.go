@@ -37,6 +37,8 @@ func initAPI(services apid.Services) {
 	analyticsBasePath = config.GetString(configAnalyticsBasePath)
 	services.API().HandleFunc(analyticsBasePath+"/{bundle_scope_uuid}",
 		saveAnalyticsRecord).Methods("POST")
+	services.API().HandleFunc(analyticsBasePath,
+		processAnalyticsRecord).Methods("POST")
 }
 
 func saveAnalyticsRecord(w http.ResponseWriter, r *http.Request) {
@@ -70,12 +72,63 @@ func saveAnalyticsRecord(w http.ResponseWriter, r *http.Request) {
 				"UNKNOWN_SCOPE", dbErr.Reason)
 		}
 	} else {
-		err := processPayload(tenant, scopeuuid, r)
+		body, err := getJsonBody(r)
 		if err.ErrorCode == "" {
-			w.WriteHeader(http.StatusOK)
+			err = validateEnrichPublish(tenant, body)
+			if err.ErrorCode == "" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+		}
+		writeError(w, http.StatusBadRequest, err.ErrorCode, err.Reason)
+	}
+}
+
+func processAnalyticsRecord(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	db := getDB() // When database isnt initialized
+	if db == nil {
+		writeError(w, http.StatusInternalServerError,
+			"INTERNAL_SERVER_ERROR",
+			"Service is not initialized completely")
+		return
+	}
+
+	if !strings.EqualFold(r.Header.Get("Content-Type"), "application/json") {
+		writeError(w, http.StatusBadRequest, "UNSUPPORTED_CONTENT_TYPE",
+			"Only supported content type is application/json")
+		return
+	}
+
+	body, err := getJsonBody(r)
+	if err.ErrorCode == "" {
+		tenant, e := getTenantFromPayload(body)
+		if e.ErrorCode == "" {
+			_, dbErr := validateTenant(&tenant)
+			if dbErr.ErrorCode != "" {
+				switch dbErr.ErrorCode {
+				case "INTERNAL_SEARCH_ERROR":
+					writeError(w, http.StatusInternalServerError,
+						"INTERNAL_SEARCH_ERROR", dbErr.Reason)
+				case "UNKNOWN_SCOPE":
+					writeError(w, http.StatusBadRequest,
+						"UNKNOWN_SCOPE", dbErr.Reason)
+				}
+				return
+			} else {
+				err = validateEnrichPublish(tenant, body)
+				if err.ErrorCode == "" {
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+			}
 		} else {
 			writeError(w, http.StatusBadRequest,
-				err.ErrorCode, err.Reason)
+				e.ErrorCode, e.Reason)
+			return
 		}
 	}
+	writeError(w, http.StatusBadRequest, err.ErrorCode, err.Reason)
 }
