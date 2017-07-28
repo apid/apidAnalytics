@@ -92,9 +92,8 @@ func processChange(changes *common.ChangeList) {
 						ele.Get("env", &env)
 						if scopeuuid != "" {
 							tenantCache[scopeuuid] = tenant{
-								Org:      org,
-								Env:      env,
-								TenantId: tenantid}
+								Org: org,
+								Env: env}
 							log.Debugf("Refreshed local "+
 								"tenantCache. Added "+
 								"scope: "+"%s", scopeuuid)

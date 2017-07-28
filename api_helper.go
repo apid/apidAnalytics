@@ -41,9 +41,8 @@ type axRecords struct {
 }
 
 type tenant struct {
-	Org      string
-	Env      string
-	TenantId string
+	Org string
+	Env string
 }
 
 func getJsonBody(r *http.Request) (map[string]interface{}, errResponse) {
@@ -186,37 +185,11 @@ func validate(recordMap map[string]interface{}) (bool, errResponse) {
 
 /*
 Enrich each record by adding org and env fields
-It also finds and adds developer related information based on the apiKey if not already present in the payload
 */
 func enrich(recordMap map[string]interface{}, tenant tenant) {
 	// Always overwrite organization/environment value with the tenant information provided in the payload
 	recordMap["organization"] = tenant.Org
 	recordMap["environment"] = tenant.Env
-
-	apiKey, exists := recordMap["client_id"]
-	// apiKey doesnt exist then ignore adding developer fields
-	if exists && apiKey != nil {
-		apiKey, isString := apiKey.(string)
-		if isString {
-			devInfo := getDeveloperInfo(tenant.TenantId, apiKey)
-			ap, exists := recordMap["api_product"]
-			if !exists || ap == nil {
-				recordMap["api_product"] = devInfo.ApiProduct
-			}
-			da, exists := recordMap["developer_app"]
-			if !exists || da == nil {
-				recordMap["developer_app"] = devInfo.DeveloperApp
-			}
-			de, exists := recordMap["developer_email"]
-			if !exists || de == nil {
-				recordMap["developer_email"] = devInfo.DeveloperEmail
-			}
-			d, exists := recordMap["developer"]
-			if !exists || d == nil {
-				recordMap["developer"] = devInfo.Developer
-			}
-		}
-	}
 }
 
 func writeError(w http.ResponseWriter, status int, code string, reason string) {

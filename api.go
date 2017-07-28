@@ -106,7 +106,7 @@ func processAnalyticsRecord(w http.ResponseWriter, r *http.Request) {
 	if err.ErrorCode == "" {
 		tenant, e := getTenantFromPayload(body)
 		if e.ErrorCode == "" {
-			_, dbErr := validateTenant(&tenant)
+			_, dbErr := validateTenant(tenant)
 			if dbErr.ErrorCode != "" {
 				switch dbErr.ErrorCode {
 				case "INTERNAL_SEARCH_ERROR":

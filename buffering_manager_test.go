@@ -27,7 +27,7 @@ import (
 var _ = Describe("test getBucketForTimestamp()", func() {
 	It("should return new bucket or existing bucket if created previously", func() {
 		t := time.Date(2017, 1, 20, 10, 24, 5, 0, time.UTC)
-		tenant := tenant{Org: "testorg", Env: "testenv", TenantId: "tenantid"}
+		tenant := tenant{Org: "testorg", Env: "testenv"}
 
 		bucket, err := getBucketForTimestamp(t, tenant)
 		Expect(err).ShouldNot(HaveOccurred())

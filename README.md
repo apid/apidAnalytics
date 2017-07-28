@@ -23,14 +23,11 @@ runtime traffic from Micro and Enterprise Gateway and puplishing to Apigee.
 2. Create a listener for Apigee-Sync event
     1. Each time a Snapshot is received, create an in-memory cache for data scope
     2. Each time a changeList is received, if data_scope info changed, then insert/delete info for changed scope from tenantCache
-    3. Developer info cache will be invalidated periodically and populated when 1st request for that apiKey comes in
 3. Initialize POST /analytics/{scope_uuid} and POST /analytics API's
 4. Upon receiving requests
     1. Validate and enrich each batch of analytics records. If scope_uuid is given, then that is used to validate.
        If scope_uuid is not provided, then the payload should have organization and environment. The org/env
        is then used to validate the scope for this cluster.
-        1. If developerCache does not have info for apiKey then get from DB and insert into cache.
-           This way the cache will only have info for developers/app with active traffic
     2. If valid, then publish records to an internal buffer channel
 5. Buffering Logic
     1. Buffering manager creates listener on the internal buffer channel and thus consumes messages

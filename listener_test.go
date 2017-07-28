@@ -91,7 +91,6 @@ var _ = Describe("ApigeeSync event", func() {
 
 			handler.Handle(&event)
 			tenant := tenantCache["i"]
-			Expect(tenant.TenantId).To(Equal("s"))
 			Expect(tenant.Org).To(Equal("o"))
 			Expect(tenant.Env).To(Equal("e"))
 
@@ -141,7 +140,6 @@ var _ = Describe("ApigeeSync event", func() {
 
 				handler.Handle(&insert)
 				tenant := tenantCache["i2"]
-				Expect(tenant.TenantId).To(Equal("s2"))
 				Expect(tenant.Org).To(Equal("o2"))
 				Expect(tenant.Env).To(Equal("e2"))
 

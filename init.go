@@ -20,7 +20,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 )
 
 const (
@@ -140,22 +139,6 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 	// Initialize buffer manager to watch the internalBuffer channel
 	// for new messages and dump them to files
 	initBufferingManager()
-
-	// Initialize developerInfo cache invalidation periodically
-	if config.GetBool(useCaching) {
-		updateDeveloperInfoCache()
-		go func() {
-			ticker := time.NewTicker(time.Second *
-				config.GetDuration(analyticsCacheRefreshInterval))
-			// Ticker will keep running till go routine is running
-			// i.e. till application is running
-			defer ticker.Stop()
-
-			for range ticker.C {
-				updateDeveloperInfoCache()
-			}
-		}()
-	}
 
 	// Create a listener for shutdown event and register callback
 	h := func(event apid.Event) {

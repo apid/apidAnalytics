@@ -145,67 +145,55 @@ var _ = Describe("test valid() directly", func() {
 })
 
 var _ = Describe("test enrich() directly", func() {
-	Context("enrich record for existing apiKey", func() {
-		It("developer related fields should be added", func() {
+	Context("enrich record where org/env in record is different from main org/env in payload", func() {
+		It("The record should also have org/env for which record was validated ", func() {
 			var record = []byte(`{
-					"response_status_code": 200,
+					"organization":"o",
+					"environment":"e",
 					"client_id":"testapikey",
 					"client_received_start_timestamp": 1486406248277,
 					"client_received_end_timestamp": 1486406248290
-				}`)
+			}`)
 
 			raw := getRaw(record)
-			tenant := tenant{Org: "testorg", Env: "testenv", TenantId: "tenantid"}
+			tenant := tenant{Org: "testorg", Env: "testenv"}
 			enrich(raw, tenant)
 
 			Expect(raw["organization"]).To(Equal(tenant.Org))
 			Expect(raw["environment"]).To(Equal(tenant.Env))
-			Expect(raw["api_product"]).To(Equal("testproduct"))
-			Expect(raw["developer_app"]).To(Equal("testapp"))
-			Expect(raw["developer_email"]).To(Equal("testdeveloper@test.com"))
-			Expect(raw["developer"]).To(Equal("testdeveloper"))
-		})
-		It("developer related fields should be added only if not already existing or value is null", func() {
-			var record = []byte(`{
-					"response_status_code": 200,
-					"client_id":"testapikey",
-					"client_received_start_timestamp": 1486406248277,
-					"client_received_end_timestamp": 1486406248290,
-					"api_product":"test_prod",
-					"developer_app":null
-				}`)
-
-			raw := getRaw(record)
-			tenant := tenant{Org: "testorg", Env: "testenv", TenantId: "tenantid"}
-			enrich(raw, tenant)
-
-			Expect(raw["organization"]).To(Equal(tenant.Org))
-			Expect(raw["environment"]).To(Equal(tenant.Env))
-			Expect(raw["api_product"]).To(Equal("test_prod"))
-			Expect(raw["developer_app"]).To(Equal("testapp"))
-			Expect(raw["developer_email"]).To(Equal("testdeveloper@test.com"))
-			Expect(raw["developer"]).To(Equal("testdeveloper"))
 		})
 	})
-
-	Context("enrich record where no apikey is set", func() {
+	Context("enrich record where no org/env is there in the record is set", func() {
 		It("developer related fields should not be added", func() {
 			var record = []byte(`{
 					"response_status_code": 200,
+					"client_id":"testapikey",
 					"client_received_start_timestamp": 1486406248277,
 					"client_received_end_timestamp": 1486406248290
 				}`)
-
 			raw := getRaw(record)
-			tenant := tenant{Org: "testorg", Env: "testenv", TenantId: "tenantid"}
+			tenant := tenant{Org: "testorg", Env: "testenv"}
 			enrich(raw, tenant)
 
 			Expect(raw["organization"]).To(Equal(tenant.Org))
 			Expect(raw["environment"]).To(Equal(tenant.Env))
-			Expect(raw["api_product"]).To(BeNil())
-			Expect(raw["developer_app"]).To(BeNil())
-			Expect(raw["developer_email"]).To(BeNil())
-			Expect(raw["developer"]).To(BeNil())
+		})
+	})
+	Context("enrich record where org/env is same as the main org/env in payload", func() {
+		It("developer related fields should not be added", func() {
+			var record = []byte(`{
+					"organization":"testorg",
+					"environment": "testenv",
+					"client_id":"testapikey",
+					"client_received_start_timestamp": 1486406248277,
+					"client_received_end_timestamp": 1486406248290
+			}`)
+			raw := getRaw(record)
+			tenant := tenant{Org: "testorg", Env: "testenv"}
+			enrich(raw, tenant)
+
+			Expect(raw["organization"]).To(Equal(tenant.Org))
+			Expect(raw["environment"]).To(Equal(tenant.Env))
 		})
 	})
 })
