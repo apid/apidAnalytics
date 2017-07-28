@@ -54,6 +54,8 @@ func processSnapshot(snapshot *common.Snapshot) {
 		createTenantCache(snapshot)
 		log.Debug("Created a local cache" +
 			" for datasope information")
+		createOrgEnvCache(snapshot)
+		log.Debug("Created a local cache for org~env Information")
 	} else {
 		log.Info("Will not be caching any developer or tenant info " +
 			"and make a DB call for every analytics msg")
@@ -77,6 +79,10 @@ func processChange(changes *common.ChangeList) {
 					// map as it has multiple readers
 					tenantCachelock.Lock()
 					defer tenantCachelock.Unlock()
+
+					orgEnvCacheLock.Lock()
+					defer orgEnvCacheLock.Unlock()
+
 					for _, ele := range rows {
 						var scopeuuid, tenantid string
 						var org, env string
@@ -93,6 +99,14 @@ func processChange(changes *common.ChangeList) {
 								"tenantCache. Added "+
 								"scope: "+"%s", scopeuuid)
 						}
+
+						orgEnv := getKeyForOrgEnvCache(org, env)
+						if orgEnv != "" {
+							orgEnvCache[orgEnv] = true
+							log.Debugf("Refreshed local "+
+								"orgEnvCache. Added "+
+								"orgEnv: "+"%s", orgEnv)
+						}
 					}
 				case common.Delete:
 					rows = append(rows, payload.OldRow)
@@ -100,14 +114,26 @@ func processChange(changes *common.ChangeList) {
 					// as it has multiple readers
 					tenantCachelock.Lock()
 					defer tenantCachelock.Unlock()
+
+					orgEnvCacheLock.Lock()
+					defer orgEnvCacheLock.Unlock()
 					for _, ele := range rows {
-						var scopeuuid string
+						var scopeuuid, org, env string
 						ele.Get("id", &scopeuuid)
+						ele.Get("org", &org)
+						ele.Get("env", &env)
 						if scopeuuid != "" {
 							delete(tenantCache, scopeuuid)
 							log.Debugf("Refreshed local"+
 								" tenantCache. Deleted"+
 								" scope: %s", scopeuuid)
+						}
+						orgEnv := getKeyForOrgEnvCache(org, env)
+						if orgEnv != "" {
+							delete(orgEnvCache, orgEnv)
+							log.Debugf("Refreshed local"+
+								" orgEnvCache. Deleted"+
+								" org~env: %s", orgEnv)
 						}
 					}
 				}

@@ -27,6 +27,13 @@ var tenantCache map[string]tenant
 // read while its being written to and vice versa
 var tenantCachelock = sync.RWMutex{}
 
+// Cache for all org/env for this cluster
+var orgEnvCache map[string]bool
+
+// RW lock for orgEnvCache map cache since the cache can be
+// read while its being written to and vice versa
+var orgEnvCacheLock = sync.RWMutex{}
+
 // Cache for apiKey~tenantId to developer related information
 var developerInfoCache map[string]developerInfo
 
@@ -61,6 +68,32 @@ func createTenantCache(snapshot *common.Snapshot) {
 		}
 	}
 	log.Debugf("Count of data scopes in the cache: %d", len(tenantCache))
+}
+
+// Load data scope information into an in-memory cache so that
+// for each record a DB lookup is not required
+func createOrgEnvCache(snapshot *common.Snapshot) {
+	// Lock before writing to the map as it has multiple readers
+	orgEnvCacheLock.Lock()
+	defer orgEnvCacheLock.Unlock()
+	orgEnvCache = make(map[string]bool)
+
+	for _, table := range snapshot.Tables {
+		switch table.Name {
+		case "edgex.data_scope":
+			for _, row := range table.Rows {
+				var org, env string
+
+				row.Get("org", &org)
+				row.Get("env", &env)
+				orgEnv := getKeyForOrgEnvCache(org, env)
+				if orgEnv != "" {
+					orgEnvCache[orgEnv] = true
+				}
+			}
+		}
+	}
+	log.Debugf("Count of org~env in the cache: %d", len(orgEnvCache))
 }
 
 // Load data scope information into an in-memory cache so that
@@ -178,6 +211,37 @@ It also stores the scope i.e. tenant_id in the tenant object using pointer.
 tenant_id in combination with apiKey is used to find kms related information
 */
 func validateTenant(tenant *tenant) (bool, dbError) {
+	if config.GetBool(useCaching) {
+		// acquire a read lock as this cache has 1 writer as well
+		orgEnvCacheLock.RLock()
+		orgEnv := getKeyForOrgEnvCache(tenant.Org, tenant.Env)
+		_, exists := orgEnvCache[orgEnv]
+		orgEnvCacheLock.RUnlock()
+		dbErr := dbError{}
+		if !exists {
+			log.Debugf("OrgEnv = %s not found "+
+				"in cache", orgEnv)
+			log.Debug("loading info from DB")
+
+			// Update cache
+			valid, dbErr := validateTenantFromDB(tenant)
+			if valid {
+				// update cache
+				orgEnvCacheLock.Lock()
+				defer orgEnvCacheLock.Unlock()
+				orgEnvCache[orgEnv] = true
+			}
+			return valid, dbErr
+		} else {
+			return true, dbErr
+		}
+	} else {
+		return validateTenantFromDB(tenant)
+	}
+
+}
+
+func validateTenantFromDB(tenant *tenant) (bool, dbError) {
 	db := getDB()
 	error := db.QueryRow("SELECT scope FROM edgex_data_scope"+
 		" where org = ? and env = ?", &tenant.Org, &tenant.Env).Scan(&tenant.TenantId)
@@ -248,4 +312,8 @@ func getValuesIgnoringNull(sqlValue sql.NullString) string {
 // Build Key as a combination of tenantId and apiKey for the developerInfo Cache
 func getKeyForDeveloperInfoCache(tenantId string, apiKey string) string {
 	return tenantId + "~" + apiKey
+}
+
+func getKeyForOrgEnvCache(org, env string) string {
+	return org + "~" + env
 }

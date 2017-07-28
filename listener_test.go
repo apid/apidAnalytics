@@ -38,7 +38,9 @@ var _ = Describe("ApigeeSync event", func() {
 
 		snapshot := getDatascopeSnapshot()
 		createTenantCache(&snapshot)
+		createOrgEnvCache(&snapshot)
 		Expect(len(tenantCache)).To(Equal(1))
+		Expect(len(orgEnvCache)).To(Equal(1))
 	})
 
 	AfterEach(func() {
@@ -92,6 +94,9 @@ var _ = Describe("ApigeeSync event", func() {
 			Expect(tenant.TenantId).To(Equal("s"))
 			Expect(tenant.Org).To(Equal("o"))
 			Expect(tenant.Env).To(Equal("e"))
+
+			orgEnv := getKeyForOrgEnvCache("o", "e")
+			Expect(orgEnvCache[orgEnv]).To(BeTrue())
 		})
 	})
 
@@ -140,6 +145,9 @@ var _ = Describe("ApigeeSync event", func() {
 				Expect(tenant.Org).To(Equal("o2"))
 				Expect(tenant.Env).To(Equal("e2"))
 
+				orgEnv := getKeyForOrgEnvCache("o2", "e2")
+				Expect(orgEnvCache[orgEnv]).To(BeTrue())
+
 				txn, err = getDB().Begin()
 				Expect(err).ShouldNot(HaveOccurred())
 				txn.Exec("DELETE FROM edgex_data_scope where id = 'i2'")
@@ -158,6 +166,9 @@ var _ = Describe("ApigeeSync event", func() {
 
 				handler.Handle(&delete)
 				_, exists := tenantCache["i2"]
+				Expect(exists).To(BeFalse())
+
+				_, exists = orgEnvCache[orgEnv]
 				Expect(exists).To(BeFalse())
 			})
 		})

@@ -157,10 +157,59 @@ var _ = Describe("test getDevInfoFromDB()", func() {
 })
 
 var _ = Describe("test validateTenant()", func() {
+	Context("with usecaching set to true", func() {
+		BeforeEach(func() {
+			config.Set(useCaching, true)
+			snapshot := getDatascopeSnapshot()
+			createOrgEnvCache(&snapshot)
+			Expect(len(orgEnvCache)).To(Equal(1))
+		})
+		AfterEach(func() {
+			config.Set(useCaching, false)
+		})
+		Context("valididate existing org/env", func() {
+			It("should return true", func() {
+				tenant := tenant{Org: "testorg", Env: "testenv"}
+				valid, dbError := validateTenant(&tenant)
+				Expect(dbError.Reason).To(Equal(""))
+				Expect(valid).To(BeTrue())
+			})
+		})
+
+		Context("get tenant for invalid scopeuuid", func() {
+			It("should return false", func() {
+				tenant := tenant{Org: "wrongorg", Env: "wrongenv"}
+				valid, dbError := validateTenant(&tenant)
+				Expect(dbError.ErrorCode).To(Equal("UNKNOWN_SCOPE"))
+				Expect(valid).To(BeFalse())
+			})
+		})
+	})
+	Context("with usecaching set to false", func() {
+		Context("valididate existing org/env", func() {
+			It("should return true", func() {
+				tenant := tenant{Org: "testorg", Env: "testenv"}
+				valid, dbError := validateTenant(&tenant)
+				Expect(dbError.Reason).To(Equal(""))
+				Expect(valid).To(BeTrue())
+			})
+		})
+		Context("get tenant for invalid scopeuuid", func() {
+			It("should return false", func() {
+				tenant := tenant{Org: "wrongorg", Env: "wrongenv"}
+				valid, dbError := validateTenant(&tenant)
+				Expect(dbError.ErrorCode).To(Equal("UNKNOWN_SCOPE"))
+				Expect(valid).To(BeFalse())
+			})
+		})
+	})
+})
+
+var _ = Describe("test validateTenantFromDB()", func() {
 	Context("validate tenant for org/env that exists in DB", func() {
 		It("should not return an error and tenantId should be populated", func() {
 			tenant := tenant{Org: "testorg", Env: "testenv"}
-			valid, dbError := validateTenant(&tenant)
+			valid, dbError := validateTenantFromDB(&tenant)
 			Expect(valid).To(BeTrue())
 			Expect(tenant.TenantId).To(Equal("tenantid"))
 			Expect(dbError.ErrorCode).To(Equal(""))
@@ -169,7 +218,7 @@ var _ = Describe("test validateTenant()", func() {
 	Context("validate tenant for org/env that do not exist in DB", func() {
 		It("should return error with unknown_scope", func() {
 			tenant := tenant{Org: "wrongorg", Env: "wrongenv"}
-			valid, dbError := validateTenant(&tenant)
+			valid, dbError := validateTenantFromDB(&tenant)
 			Expect(valid).To(BeFalse())
 			Expect(dbError.ErrorCode).To(Equal("UNKNOWN_SCOPE"))
 		})
@@ -191,6 +240,20 @@ var _ = Describe("test getValuesIgnoringNull()", func() {
 			res := getValuesIgnoringNull(a)
 			Expect(res).To(Equal("sql"))
 		})
+	})
+})
+
+var _ = Describe("test getKeyForDeveloperInfoCache()", func() {
+	It("should return key using tenantid and apiKey", func() {
+		res := getKeyForDeveloperInfoCache("testid", "testapikey")
+		Expect(res).To(Equal("testid~testapikey"))
+	})
+})
+
+var _ = Describe("test getKeyForOrgEnvCache()", func() {
+	It("should return key using org and env", func() {
+		res := getKeyForDeveloperInfoCache("testorg", "testenv")
+		Expect(res).To(Equal("testorg~testenv"))
 	})
 })
 
