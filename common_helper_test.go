@@ -17,19 +17,28 @@ package apidAnalytics
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"github.com/apigee-labs/transicator/common"
 )
+
+var _ = Describe("test createTenantCache()", func() {
+	It("It should create a cache from DB", func() {
+		createTenantCache()
+		Expect(len(tenantCache)).To(Equal(1))
+	})
+})
+
+var _ = Describe("test createOrgEnvCache()", func() {
+	It("It should create a cache from DB", func() {
+		createOrgEnvCache()
+		Expect(len(orgEnvCache)).To(Equal(1))
+	})
+})
 
 var _ = Describe("test getTenantForScope()", func() {
 	Context("with usecaching set to true", func() {
 		BeforeEach(func() {
 			config.Set(useCaching, true)
-			snapshot := getDatascopeSnapshot()
-			createTenantCache(&snapshot)
-			createOrgEnvCache(&snapshot)
+			createTenantCache()
 			Expect(len(tenantCache)).To(Equal(1))
-			Expect(len(orgEnvCache)).To(Equal(1))
 		})
 		AfterEach(func() {
 			config.Set(useCaching, false)
@@ -41,7 +50,6 @@ var _ = Describe("test getTenantForScope()", func() {
 				Expect(tenant.Org).To(Equal("testorg"))
 			})
 		})
-
 		Context("get tenant for invalid scopeuuid", func() {
 			It("should return empty tenant and a db error", func() {
 				tenant, dbError := getTenantForScope("wrongid")
@@ -59,7 +67,6 @@ var _ = Describe("test getTenantForScope()", func() {
 				Expect(tenant.Org).To(Equal("testorg"))
 			})
 		})
-
 		Context("get tenant for invalid scopeuuid", func() {
 			It("should return empty tenant and a db error", func() {
 				tenant, dbError := getTenantForScope("wrongid")
@@ -90,11 +97,11 @@ var _ = Describe("test getTenantFromDB()", func() {
 })
 
 var _ = Describe("test validateTenant()", func() {
+
 	Context("with usecaching set to true", func() {
 		BeforeEach(func() {
 			config.Set(useCaching, true)
-			snapshot := getDatascopeSnapshot()
-			createOrgEnvCache(&snapshot)
+			createOrgEnvCache()
 			Expect(len(orgEnvCache)).To(Equal(1))
 		})
 		AfterEach(func() {
@@ -164,23 +171,3 @@ var _ = Describe("test getKeyForOrgEnvCache()", func() {
 		Expect(res).To(Equal("testorg~testenv"))
 	})
 })
-
-func getDatascopeSnapshot() common.Snapshot {
-	event := common.Snapshot{
-		SnapshotInfo: "test_snapshot_valid",
-		Tables: []common.Table{
-			{
-				Name: LISTENER_TABLE_DATA_SCOPE,
-				Rows: []common.Row{
-					{
-						"id":    &common.ColumnVal{Value: "testid"},
-						"scope": &common.ColumnVal{Value: "tenantid"},
-						"org":   &common.ColumnVal{Value: "testorg"},
-						"env":   &common.ColumnVal{Value: "testenv"},
-					},
-				},
-			},
-		},
-	}
-	return event
-}

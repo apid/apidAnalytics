@@ -53,10 +53,6 @@ const (
 	// cache to avoid DB calls for each analytics message
 	useCaching        = "apidanalytics_use_caching"
 	useCachingDefault = false
-
-	// Interval in seconds when the developer cache should be refreshed
-	analyticsCacheRefreshInterval         = "apidanalytics_cache_refresh_interval"
-	analyticsCacheRefreshIntervaleDefault = 1800
 )
 
 // keep track of the services that this plugin will use
@@ -179,9 +175,6 @@ func setConfig(services apid.Services) error {
 
 	// set default config for useCaching
 	config.SetDefault(useCaching, useCachingDefault)
-
-	// set default config for cache refresh interval
-	config.SetDefault(analyticsCacheRefreshInterval, analyticsCacheRefreshIntervaleDefault)
 
 	// set default config for upload interval
 	config.SetDefault(analyticsUploadInterval, analyticsUploadIntervalDefault)

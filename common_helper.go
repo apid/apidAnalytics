@@ -16,7 +16,6 @@ package apidAnalytics
 
 import (
 	"database/sql"
-	"github.com/apigee-labs/transicator/common"
 	"sync"
 )
 
@@ -36,59 +35,60 @@ var orgEnvCacheLock = sync.RWMutex{}
 
 // Load data scope information into an in-memory cache so that
 // for each record a DB lookup is not required
-func createTenantCache(snapshot *common.Snapshot) {
+func createTenantCache() {
 	// Lock before writing to the map as it has multiple readers
 	tenantCachelock.Lock()
 	defer tenantCachelock.Unlock()
 	tenantCache = make(map[string]tenant)
 
-	for _, table := range snapshot.Tables {
-		switch table.Name {
-		case "edgex.data_scope":
-			for _, row := range table.Rows {
-				var org, env, id string
+	var org, env, id string
 
-				row.Get("id", &id)
-				row.Get("org", &org)
-				row.Get("env", &env)
-				if id != "" {
-					tenantCache[id] = tenant{Org: org,
-						Env: env}
-				}
-			}
+	db := getDB()
+	rows, error := db.Query("SELECT env, org, id FROM edgex_data_scope")
+
+	if error != nil {
+		log.Warnf("Could not get datascope from DB due to : %s", error.Error())
+	} else {
+		defer rows.Close()
+		// Lock before writing to the map as it has multiple readers
+		for rows.Next() {
+			rows.Scan(&env, &org, &id)
+			tenantCache[id] = tenant{Org: org, Env: env}
 		}
 	}
+
 	log.Debugf("Count of data scopes in the cache: %d", len(tenantCache))
 }
 
 // Load data scope information into an in-memory cache so that
 // for each record a DB lookup is not required
-func createOrgEnvCache(snapshot *common.Snapshot) {
+func createOrgEnvCache() {
 	// Lock before writing to the map as it has multiple readers
 	orgEnvCacheLock.Lock()
 	defer orgEnvCacheLock.Unlock()
 	orgEnvCache = make(map[string]bool)
 
-	for _, table := range snapshot.Tables {
-		switch table.Name {
-		case "edgex.data_scope":
-			for _, row := range table.Rows {
-				var org, env string
+	var org, env string
+	db := getDB()
 
-				row.Get("org", &org)
-				row.Get("env", &env)
-				orgEnv := getKeyForOrgEnvCache(org, env)
-				if orgEnv != "" {
-					orgEnvCache[orgEnv] = true
-				}
-			}
+	rows, error := db.Query("SELECT env, org FROM edgex_data_scope")
+
+	if error != nil {
+		log.Warnf("Could not get datascope from DB due to : %s", error.Error())
+	} else {
+		defer rows.Close()
+		// Lock before writing to the map as it has multiple readers
+		for rows.Next() {
+			rows.Scan(&env, &org)
+			orgEnv := getKeyForOrgEnvCache(org, env)
+			orgEnvCache[orgEnv] = true
 		}
 	}
 	log.Debugf("Count of org~env in the cache: %d", len(orgEnvCache))
 }
 
 // Returns Tenant Info given a scope uuid from the cache or by querying
-// the DB directly based on useCachig config
+// the DB directly based on useCaching config
 func getTenantForScope(scopeuuid string) (tenant, dbError) {
 	if config.GetBool(useCaching) {
 		// acquire a read lock as this cache has 1 writer as well

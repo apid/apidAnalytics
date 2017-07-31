@@ -51,10 +51,10 @@ func processSnapshot(snapshot *common.Snapshot) {
 	setDB(db)
 
 	if config.GetBool(useCaching) {
-		createTenantCache(snapshot)
+		createTenantCache()
 		log.Debug("Created a local cache" +
 			" for datasope information")
-		createOrgEnvCache(snapshot)
+		createOrgEnvCache()
 		log.Debug("Created a local cache for org~env Information")
 	} else {
 		log.Info("Will not be caching any developer or tenant info " +
