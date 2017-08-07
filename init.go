@@ -20,7 +20,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 )
 
 const (
@@ -54,10 +53,6 @@ const (
 	// cache to avoid DB calls for each analytics message
 	useCaching        = "apidanalytics_use_caching"
 	useCachingDefault = false
-
-	// Interval in seconds when the developer cache should be refreshed
-	analyticsCacheRefreshInterval         = "apidanalytics_cache_refresh_interval"
-	analyticsCacheRefreshIntervaleDefault = 1800
 )
 
 // keep track of the services that this plugin will use
@@ -141,22 +136,6 @@ func initPlugin(services apid.Services) (apid.PluginData, error) {
 	// for new messages and dump them to files
 	initBufferingManager()
 
-	// Initialize developerInfo cache invalidation periodically
-	if config.GetBool(useCaching) {
-		updateDeveloperInfoCache()
-		go func() {
-			ticker := time.NewTicker(time.Second *
-				config.GetDuration(analyticsCacheRefreshInterval))
-			// Ticker will keep running till go routine is running
-			// i.e. till application is running
-			defer ticker.Stop()
-
-			for range ticker.C {
-				updateDeveloperInfoCache()
-			}
-		}()
-	}
-
 	// Create a listener for shutdown event and register callback
 	h := func(event apid.Event) {
 		log.Infof("Received ApidShutdown event. %v", event)
@@ -196,9 +175,6 @@ func setConfig(services apid.Services) error {
 
 	// set default config for useCaching
 	config.SetDefault(useCaching, useCachingDefault)
-
-	// set default config for cache refresh interval
-	config.SetDefault(analyticsCacheRefreshInterval, analyticsCacheRefreshIntervaleDefault)
 
 	// set default config for upload interval
 	config.SetDefault(analyticsUploadInterval, analyticsUploadIntervalDefault)

@@ -26,6 +26,32 @@ consumes:
 produces:
   - application/json
 paths:
+  '/analytics':
+    x-swagger-router-controller: analytics
+    parameters:
+      - name: analytics_data
+        in: body
+        description: The analytics data you want to post
+        required: true
+        schema:
+          $ref: "#/definitions/analytics_data"
+    post:
+      responses:
+        "200":
+          description: Success
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/errClientError"
+        "500":
+          description: Server error
+          schema:
+            $ref: "#/definitions/errServerError"
+        default:
+          description: Error
+          schema:
+            $ref: "#/definitions/errResponse"
+
   '/analytics/{bundle_scope_uuid}':
     x-swagger-router-controller: analytics
     parameters:
@@ -34,7 +60,7 @@ paths:
         required: true
         description: bundle UUID that can be mapped to a scope by APID
         type: string
-      - name: analytics_data
+      - name: records
         in: body
         description: The analytics data you want to post
         required: true
@@ -58,6 +84,53 @@ paths:
             $ref: "#/definitions/errResponse"
 
 definitions:
+  analytics_data:
+    type: object
+    required:
+      - organization
+      - environment
+      - records
+    properties:
+      organization:
+        type: string
+      environment:
+        type: string
+      records:
+        type: object
+        $ref: "#/definitions/records"
+    example: {
+    "organization":"orgname",
+    "enironment":"envname",
+    "records":[{
+        "response_status_code": 400,
+        "client_received_start_timestamp": 1462850097576,
+      	"client_received_end_timestamp": 1462850097580,
+        "client_id":"0GJKn7EQmNkKYcGL7x3gHaawWLs5gUPr"
+      },{
+        "response_status_code": 200,
+        "client_id":"2ngXgr6Rl2PXWiEmbt8zCkWY3Ptjb8ep",
+        "request_verb" : "GET",
+        "api_product":" test_product",
+        "access_token" : "fewGWG343LDV346345YCDS",
+        "apiproxy" : "OAuthProxy",
+        "apiproxy_revision" : "2",
+        "client_ip": "10.16.9.11",
+        "client_sent_end_timestamp": 1462850097894,
+        "client_received_start_timestamp": 1462850097576,
+      	"client_received_end_timestamp": 1462850097580,
+      	"client_sent_start_timestamp": 1462850097894,
+        "request_path" : "/oauth/oauthv2/auth_code/",
+        "request_uri": "/oauth/oauthv2/auth_code/?response_type=code&redirect_url=http%3A%2F%2Fexample.com&client_id=A1h6yYAVeADnEKji8M37zCSn6olcmQDB",
+        "useragent" : "Chrome",
+        "target" : "target_name",
+        "target_received_end_timestamp": 1462850097800,
+        "target_received_start_timestamp": 1462850097800,
+        "target_response_code" : 200,
+        "target_sent_end_timestamp" : 1462850097802,
+        "target_sent_start_timestamp" :  1462850097802
+      }]
+    }
+
   records:
     type: object
     required:
@@ -72,6 +145,7 @@ definitions:
     "records":[{
         "response_status_code": 400,
         "client_received_start_timestamp": 1462850097576,
+      	"client_received_end_timestamp": 1462850097580,
         "client_id":"0GJKn7EQmNkKYcGL7x3gHaawWLs5gUPr"
       },{
         "response_status_code": 200,
@@ -103,13 +177,18 @@ definitions:
     type: object
     required:
       - client_received_start_timestamp
+      - client_received_end_timestamp
     properties:
       client_received_start_timestamp:
+        type: integer
+        format: int64
+      client_received_end_timestamp:
         type: integer
         format: int64
     example: {
       "response_status_code":400,
       "client_received_start_timestamp":1462850097576,
+    	"client_received_end_timestamp": 1462850097580,
       "client_id":"0GJKn7EQmNkKYcGL7x3gHaawWLs5gUPr"
     }
 
