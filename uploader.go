@@ -165,7 +165,7 @@ func splitDirName(dirName string) (string, string) {
 func getDateFromDirTimestamp(timestamp string) string {
 	dateTime, _ := time.Parse(timestampLayout, timestamp)
 	date := dateTime.Format("2006-01-02") // same as YYYY-MM-dd
-	time := dateTime.Format("15-04")      // same as HH-mm
+	time := dateTime.Format("15-04-05")   // same as HH-mm-ss
 	dateHourTS := "date=" + date + "/time=" + time
 	return dateHourTS
 }
