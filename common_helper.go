@@ -186,7 +186,7 @@ func validateTenantFromDB(tenant tenant) (bool, dbError) {
 	db := getDB()
 	rows, err := db.Query("SELECT 1 FROM edgex_data_scope"+
 		" where org = ? and env = ?", tenant.Org, tenant.Env)
-
+	defer rows.Close()
 	if !rows.Next() {
 		if err == nil {
 			reason := "No tenant found for this org: " + tenant.Org + " and env:" + tenant.Env

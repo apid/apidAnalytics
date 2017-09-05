@@ -119,7 +119,10 @@ func initDb(db apid.DB) {
 }
 
 func createTables(db apid.DB) {
-	_, err := db.Exec(`
+	tx, err := db.Begin()
+	Expect(err).Should(Succeed())
+	defer tx.Rollback()
+	_, err = tx.Exec(`
 		CREATE TABLE IF NOT EXISTS kms_api_product (
 		    id text,
 		    tenant_id text,
@@ -186,13 +189,16 @@ func createTables(db apid.DB) {
 		    PRIMARY KEY (appcred_id, app_id, apiprdt_id,tenant_id)
 		);
 	`)
-	if err != nil {
-		panic("Unable to initialize DB " + err.Error())
-	}
+	Expect(err).Should(Succeed())
+	err = tx.Commit()
+	Expect(err).Should(Succeed())
 }
 
 func createApidClusterTables(db apid.DB) {
-	_, err := db.Exec(`
+	txn, err := db.Begin()
+	Expect(err).Should(Succeed())
+	defer txn.Rollback()
+	_, err = txn.Exec(`
 		CREATE TABLE edgex_apid_cluster (
 		    id text,
 		    instance_id text,
@@ -222,16 +228,17 @@ func createApidClusterTables(db apid.DB) {
 		    PRIMARY KEY (id)
 		);
 	`)
-	if err != nil {
-		panic("Unable to initialize DB " + err.Error())
-	}
+	Expect(err).Should(Succeed())
+	err = txn.Commit()
+	Expect(err).Should(Succeed())
 }
 
 func insertTestData(db apid.DB) {
 
 	txn, err := db.Begin()
-	Expect(err).ShouldNot(HaveOccurred())
-	txn.Exec("INSERT INTO kms_app_credential_apiproduct_mapper (tenant_id,"+
+	Expect(err).Should(Succeed())
+	defer txn.Rollback()
+	_, err = txn.Exec("INSERT INTO kms_app_credential_apiproduct_mapper (tenant_id,"+
 		" appcred_id, app_id, apiprdt_id, status, _change_selector) "+
 		"VALUES"+
 		"($1,$2,$3,$4,$5,$6)",
@@ -242,8 +249,8 @@ func insertTestData(db apid.DB) {
 		"APPROVED",
 		"12345",
 	)
-
-	txn.Exec("INSERT INTO kms_app (id, tenant_id, name, developer_id) "+
+	Expect(err).Should(Succeed())
+	_, err = txn.Exec("INSERT INTO kms_app (id, tenant_id, name, developer_id) "+
 		"VALUES"+
 		"($1,$2,$3,$4)",
 		"testappid",
@@ -251,16 +258,16 @@ func insertTestData(db apid.DB) {
 		"testapp",
 		"testdeveloperid",
 	)
-
-	txn.Exec("INSERT INTO kms_api_product (id, tenant_id, name) "+
+	Expect(err).Should(Succeed())
+	_, err = txn.Exec("INSERT INTO kms_api_product (id, tenant_id, name) "+
 		"VALUES"+
 		"($1,$2,$3)",
 		"testproductid",
 		"tenantid",
 		"testproduct",
 	)
-
-	txn.Exec("INSERT INTO kms_developer (id, tenant_id, username, email) "+
+	Expect(err).Should(Succeed())
+	_, err = txn.Exec("INSERT INTO kms_developer (id, tenant_id, username, email) "+
 		"VALUES"+
 		"($1,$2,$3,$4)",
 		"testdeveloperid",
@@ -268,8 +275,8 @@ func insertTestData(db apid.DB) {
 		"testdeveloper",
 		"testdeveloper@test.com",
 	)
-
-	txn.Exec("INSERT INTO edgex_data_scope (id, _change_selector, "+
+	Expect(err).Should(Succeed())
+	_, err = txn.Exec("INSERT INTO edgex_data_scope (id, _change_selector, "+
 		"apid_cluster_id, scope, org, env) "+
 		"VALUES"+
 		"($1,$2,$3,$4,$5,$6)",
@@ -280,7 +287,9 @@ func insertTestData(db apid.DB) {
 		"testorg",
 		"testenv",
 	)
-	txn.Commit()
+	Expect(err).Should(Succeed())
+	err = txn.Commit()
+	Expect(err).Should(Succeed())
 }
 
 var _ = AfterSuite(func() {

@@ -30,7 +30,7 @@ var _ = Describe("test uploadFile()", func() {
 
 		By("valid tenant")
 		tenant := "testorg~testenv"
-		relativeFilePath := "/date=2006-01-02/time=15-04/fakefile.txt.gz"
+		relativeFilePath := "/date=2006-01-02/time=15-04-05/fakefile.txt.gz"
 
 		status, err := uploadFile(tenant, relativeFilePath, fp)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -38,7 +38,7 @@ var _ = Describe("test uploadFile()", func() {
 
 		By("invalid tenant")
 		tenant = "o~e"
-		relativeFilePath = "/date=2006-01-02/time=15-04/fakefile.txt.gz"
+		relativeFilePath = "/date=2006-01-02/time=15-04-05/fakefile.txt.gz"
 
 		status, err = uploadFile(tenant, relativeFilePath, fp)
 		Expect(err).Should(HaveOccurred())
@@ -81,7 +81,7 @@ var _ = Describe("test getSignedUrl()", func() {
 	Context("invalid tenant", func() {
 		It("should return error", func() {
 			tenant := "org~env"
-			relativeFilePath := "/date=2016-01-01/time=22-45/a.txt.gz"
+			relativeFilePath := "/date=2016-01-01/time=22-45-05/a.txt.gz"
 
 			_, err := getSignedUrl(tenant, relativeFilePath)
 			Expect(err).Should(HaveOccurred())
@@ -91,7 +91,7 @@ var _ = Describe("test getSignedUrl()", func() {
 	Context("valid tenant", func() {
 		It("should return signed url", func() {
 			tenant := "testorg~testenv"
-			relativeFilePath := "/date=2016-01-01/time=22-45/a.txt.gz"
+			relativeFilePath := "/date=2016-01-01/time=22-45-05/a.txt.gz"
 
 			url, err := getSignedUrl(tenant, relativeFilePath)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -150,6 +150,6 @@ var _ = Describe("test getDateFromDirTimestamp()", func() {
 	It("should return date/time formatted timestamp", func() {
 		timestamp := "20060102150405"
 		dateHourTS := getDateFromDirTimestamp(timestamp)
-		Expect(dateHourTS).To(Equal("date=2006-01-02/time=15-04"))
+		Expect(dateHourTS).To(Equal("date=2006-01-02/time=15-04-05"))
 	})
 })
