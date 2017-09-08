@@ -100,7 +100,7 @@ definitions:
         $ref: "#/definitions/records"
     example: {
     "organization":"orgname",
-    "enironment":"envname",
+    "environment":"envname",
     "records":[{
         "response_status_code": 400,
         "client_received_start_timestamp": 1462850097576,
@@ -194,10 +194,10 @@ definitions:
 
   errClientError:
     required:
-      - errrorCode
+      - errorCode
       - reason
     properties:
-      errrorCode:
+      errorCode:
         type: string
         enum:
           - UNKNOWN_SCOPE
@@ -208,16 +208,16 @@ definitions:
       reason:
         type: string
     example: {
-      "errrorCode":"UNKNOWN_SCOPE",
+      "errorCode":"UNKNOWN_SCOPE",
       "reason":"No tenant found for this scopeuuid : UUID"
     }
 
   errServerError:
     required:
-      - errrorCode
+      - errorCode
       - reason
     properties:
-      errrorCode:
+      errorCode:
         type: string
         enum:
           - INTERNAL_SERVER_ERROR
@@ -225,16 +225,16 @@ definitions:
       reason:
         type: string
     example: {
-      "errrorCode":"INTERNAL_SERVER_ERROR",
+      "errorCode":"INTERNAL_SERVER_ERROR",
       "reason":"Service is not initialized completely"
     }
 
   errResponse:
     required:
-      - errrorCode
+      - errorCode
       - reason
     properties:
-      errrorCode:
+      errorCode:
         type: string
       reason:
         type: string
