@@ -19,8 +19,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	"encoding/json"
-	"github.com/30x/apid-core"
-	"github.com/30x/apid-core/factory"
+	"github.com/apid/apid-core"
+	"github.com/apid/apid-core/factory"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"

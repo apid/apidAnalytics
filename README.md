@@ -1,6 +1,6 @@
 # ApidAnalytics
 
-This is a core plugin for [apid](http://github.com/30x/apid) and is responsible for collecting analytics data for
+This is a core plugin for [apid](http://github.com/apid/apid) and is responsible for collecting analytics data for
 runtime traffic from Micro and Enterprise Gateway and puplishing to Apigee.
 
 ### Configuration
