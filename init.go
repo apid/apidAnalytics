@@ -73,7 +73,7 @@ var (
 
 // apid.RegisterPlugin() is required to be called in init()
 func init() {
-	apid.RegisterPlugin(initPlugin)
+	apid.RegisterPlugin(initPlugin, pluginData)
 }
 
 func getDB() apid.DB {
