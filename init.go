@@ -16,7 +16,7 @@ package apidAnalytics
 
 import (
 	"fmt"
-	"github.com/30x/apid-core"
+	"github.com/apid/apid-core"
 	"os"
 	"path/filepath"
 	"sync"

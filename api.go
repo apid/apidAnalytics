@@ -15,7 +15,7 @@
 package apidAnalytics
 
 import (
-	"github.com/30x/apid-core"
+	"github.com/apid/apid-core"
 	"net/http"
 	"strings"
 )
