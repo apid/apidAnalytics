@@ -26,10 +26,8 @@ import (
 )
 
 const timestampLayout = "20060102150405" // same as yyyyMMddHHmmss
-const configfwdProxyPortURL   =   "configcompletefwdp"
+
 var token string
-
-
 
 func addHeaders(req *http.Request) {
 	token = config.GetString("apigeesync_bearer_token")
