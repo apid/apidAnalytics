@@ -26,13 +26,10 @@ import (
 )
 
 const timestampLayout = "20060102150405" // same as yyyyMMddHHmmss
-
+const configfwdProxyPortURL   =   "configcompletefwdp"
 var token string
 
-var client *http.Client = &http.Client{
-	//set default timeout of 60 seconds while connecting to s3/GCS
-	Timeout: time.Duration(60 * time.Second),
-}
+
 
 func addHeaders(req *http.Request) {
 	token = config.GetString("apigeesync_bearer_token")
