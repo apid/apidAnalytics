@@ -17,9 +17,12 @@ package apidAnalytics
 import (
 	"fmt"
 	"github.com/apid/apid-core"
+	"github.com/apid/apid-core/util"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 const (
@@ -63,6 +66,7 @@ var (
 	events   apid.EventsService
 	unsafeDB apid.DB
 	dbMux    sync.RWMutex
+	client   *http.Client
 
 	localAnalyticsBaseDir      string
 	localAnalyticsTempDir      string
@@ -182,6 +186,11 @@ func setConfig(services apid.Services) error {
 	// set default config for internal buffer size
 	config.SetDefault(analyticsBufferChannelSize, analyticsBufferChannelSizeDefault)
 
+	client = &http.Client{
+		Transport: util.Transport(config.GetString(util.ConfigfwdProxyPortURL)),
+		//set default timeout of 60 seconds while connecting to s3/GCS
+		Timeout: time.Duration(60 * time.Second),
+	}
 	return nil
 }
 
