@@ -24,6 +24,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"time"
 )
 
 // BeforeSuite setup and AfterSuite cleanup is in apidAnalytics_suite_test.go
@@ -107,12 +108,13 @@ var _ = Describe("POST /analytics/{scopeuuid}", func() {
 			Expect(e.Reason).To(Equal("Gzip Encoded data cannot be read"))
 
 			By("1 bad record")
+			now := time.Now().Unix() * 1000
 			payload = []byte(`{
 						"records":[{
 							"response_status_code": 200,
 							"client_id":"testapikey",
-							"client_received_start_timestamp": 1486406248277,
-							"client_received_end_timestamp": 1486406248290
+							"client_received_start_timestamp":` + fmt.Sprintf("%v", now) + `,
+							"client_received_end_timestamp":` + fmt.Sprintf("%v", now+60000) + `
 						},{
 							"response_status_code": 200,
 							"client_id":"testapikey"
@@ -127,14 +129,16 @@ var _ = Describe("POST /analytics/{scopeuuid}", func() {
 
 	Context("valid payload", func() {
 		It("should return successfully", func() {
+			now := time.Now().Unix() * 1000
+
 			var payload = []byte(`{
-					"records":[{
-						"response_status_code": 200,
-						"client_id":"testapikey",
-						"client_received_start_timestamp": 1486406248277,
-						"client_received_end_timestamp": 1486406248290
-					}]
-				}`)
+						"records":[{
+							"response_status_code": 200,
+							"client_id":"testapikey",
+							"client_received_start_timestamp":` + fmt.Sprintf("%v", now) + `,
+							"client_received_end_timestamp":` + fmt.Sprintf("%v", now+60000) + `
+							}]
+						}`)
 			req := getRequestWithScope("testid", payload)
 			res, _ := makeRequest(req)
 			Expect(res.StatusCode).To(Equal(http.StatusOK))
@@ -265,14 +269,15 @@ var _ = Describe("POST /analytics", func() {
 			Expect(e.Reason).To(Equal("Gzip Encoded data cannot be read"))
 
 			By("1 bad record")
+			now := time.Now().Unix() * 1000
 			payload = []byte(`{
 						"organization":"testorg",
 						"environment":"testenv",
 						"records":[{
 							"response_status_code": 200,
 							"client_id":"testapikey",
-							"client_received_start_timestamp": 1486406248277,
-							"client_received_end_timestamp": 1486406248290
+							"client_received_start_timestamp":` + fmt.Sprintf("%v", now) + `,
+							"client_received_end_timestamp":` + fmt.Sprintf("%v", now+60000) + `
 						},{
 							"response_status_code": 200,
 							"client_id":"testapikey"
@@ -286,15 +291,17 @@ var _ = Describe("POST /analytics", func() {
 	})
 
 	Context("valid payload", func() {
+
 		It("should return successfully", func() {
+			now := time.Now().Unix() * 1000
 			var payload = []byte(`{
 					"organization":"testorg",
 					"environment":"testenv",
 					"records":[{
 						"response_status_code": 200,
 						"client_id":"testapikey",
-						"client_received_start_timestamp": 1486406248277,
-						"client_received_end_timestamp": 1486406248290
+						"client_received_start_timestamp":` + fmt.Sprintf("%v", now) + `,
+						"client_received_end_timestamp":` + fmt.Sprintf("%v", now+60000) + `
 					}]
 				}`)
 			req := getRequest(payload)

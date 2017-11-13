@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 /*
@@ -178,6 +179,23 @@ func validate(recordMap map[string]interface{}) (bool, errResponse) {
 				ErrorCode: "BAD_DATA",
 				Reason: "client_received_start_timestamp " +
 					"> client_received_end_timestamp"}
+		} else {
+			ts, _ := crst.Int64()
+			crstTime := time.Unix(ts/1000, 0) // Convert crst(ms) to seconds
+			diff := time.Now().UTC().Sub(crstTime)
+			if diff <= 0 {
+				return false, errResponse{
+					ErrorCode: "BAD_DATA",
+					Reason: "client_received_start_timestamp " +
+						"cannot be after current time"}
+			} else if diff.Hours() > 90*24 { // 90 Days
+				return false, errResponse{
+					ErrorCode: "BAD_DATA",
+					Reason: "client_received_start_timestamp " +
+						"cannot be older than 90 days"}
+			} else {
+				return true, errResponse{}
+			}
 		}
 	}
 	return true, errResponse{}
