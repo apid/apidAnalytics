@@ -18,8 +18,10 @@ import (
 	"bytes"
 	"encoding/json"
 
+	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"time"
 )
 
 // BeforeSuite setup and AfterSuite cleanup is in apidAnalytics_suite_test.go
@@ -71,11 +73,12 @@ var _ = Describe("test valid() directly", func() {
 			Expect(e.ErrorCode).To(Equal("MISSING_FIELD"))
 
 			By("payload with clst > clet")
+			now := time.Now().Unix() * 1000
 			record = []byte(`{
 						"response_status_code": 200,
 						"client_id":"testapikey",
-						"client_received_start_timestamp": 1486406248277,
-						"client_received_end_timestamp": 1486406248260
+						"client_received_start_timestamp":` + fmt.Sprintf("%v", now) + `,
+						"client_received_end_timestamp":` + fmt.Sprintf("%v", now-60000) + `
 					}`)
 			raw = getRaw(record)
 			valid, e = validate(raw)
@@ -90,7 +93,7 @@ var _ = Describe("test valid() directly", func() {
 						"response_status_code": 200,
 						"client_id":"testapikey",
 						"client_received_start_timestamp": 0,
-						"client_received_end_timestamp": 1486406248260
+						"client_received_end_timestamp":` + fmt.Sprintf("%v", now) + `
 					}`)
 			raw = getRaw(record)
 			valid, e = validate(raw)
@@ -105,7 +108,7 @@ var _ = Describe("test valid() directly", func() {
 						"response_status_code": 200,
 						"client_id":"testapikey",
 						"client_received_start_timestamp": null,
-						"client_received_end_timestamp": 1486406248260
+						"client_received_end_timestamp":` + fmt.Sprintf("%v", now) + `
 					}`)
 			raw = getRaw(record)
 			valid, e = validate(raw)
@@ -118,7 +121,7 @@ var _ = Describe("test valid() directly", func() {
 						"response_status_code": 200,
 						"client_id":"testapikey",
 						"client_received_start_timestamp": "",
-						"client_received_end_timestamp": 1486406248260
+						"client_received_end_timestamp":` + fmt.Sprintf("%v", now) + `
 					}`)
 			raw = getRaw(record)
 			valid, e = validate(raw)
@@ -127,15 +130,48 @@ var _ = Describe("test valid() directly", func() {
 			Expect(e.ErrorCode).To(Equal("BAD_DATA"))
 			Expect(e.Reason).To(Equal("client_received_start_timestamp and " +
 				"client_received_end_timestamp has to be number"))
+
+			By("payload with clst after current time")
+			record = []byte(`{
+						"response_status_code": 200,
+						"client_id":"testapikey",
+						"client_received_start_timestamp":` + fmt.Sprintf("%v", now+120000) + `,
+						"client_received_end_timestamp":` + fmt.Sprintf("%v", now+160000) + `
+					}`)
+			raw = getRaw(record)
+			valid, e = validate(raw)
+
+			Expect(valid).To(BeFalse())
+			Expect(e.ErrorCode).To(Equal("BAD_DATA"))
+			Expect(e.Reason).To(Equal("client_received_start_timestamp " +
+				"cannot be after current time"))
+
+			By("payload with clst older than 90 days")
+			starttime := time.Now().UTC().AddDate(0, 0, -95)
+			clst := starttime.Unix() * 1000
+			record = []byte(`{
+						"response_status_code": 200,
+						"client_id":"testapikey",
+						"client_received_start_timestamp":` + fmt.Sprintf("%v", clst) + `,
+						"client_received_end_timestamp":` + fmt.Sprintf("%v", clst+160000) + `
+					}`)
+			raw = getRaw(record)
+			valid, e = validate(raw)
+
+			Expect(valid).To(BeFalse())
+			Expect(e.ErrorCode).To(Equal("BAD_DATA"))
+			Expect(e.Reason).To(Equal("client_received_start_timestamp " +
+				"cannot be older than 90 days"))
 		})
 	})
 	Context("valid record", func() {
 		It("should return true", func() {
+			now := time.Now().Unix() * 1000
 			var record = []byte(`{
 					"response_status_code": 200,
 					"client_id":"testapikey",
-					"client_received_start_timestamp": 1486406248277,
-					"client_received_end_timestamp": 1486406248290
+					"client_received_start_timestamp":` + fmt.Sprintf("%v", now) + `,
+					"client_received_end_timestamp":` + fmt.Sprintf("%v", now+160000) + `
 				}`)
 			raw := getRaw(record)
 			valid, _ := validate(raw)
