@@ -333,8 +333,8 @@ func getRequestWithScope(scope string, payload []byte) *http.Request {
 
 func makeRequest(req *http.Request) (*http.Response, errResponse) {
 	res, err := client.Do(req)
-	defer res.Body.Close()
 	Expect(err).ShouldNot(HaveOccurred())
+	defer res.Body.Close()
 
 	var body errResponse
 	respBody, _ := ioutil.ReadAll(res.Body)
