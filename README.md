@@ -1,5 +1,7 @@
 # ApidAnalytics
 
+[![Build Status](https://travis-ci.org/apid/apidAnalytics.svg)](https://travis-ci.org/apid/apidAnalytics) [![GoDoc](https://godoc.org/github.com/apid/apidAnalytics?status.svg)](https://godoc.org/github.com/apid/apidAnalytics) [![Go Report Card](https://goreportcard.com/badge/github.com/apid/apidAnalytics)](https://goreportcard.com/report/github.com/apid/apidAnalytics)
+
 This is a core plugin for [apid](http://github.com/apid/apid) and is responsible for collecting analytics data for
 runtime traffic from Micro and Enterprise Gateway and puplishing to Apigee.
 

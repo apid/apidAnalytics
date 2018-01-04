@@ -69,7 +69,7 @@ func initUploadManager() {
 			if uploadedDirCnt > 0 {
 				// After a successful upload, retry the
 				// folders in failed directory as they might have
-				// failed due to intermitent S3/GCS issue
+				// failed due to intermittent S3/GCS issue
 				retryFailedUploads()
 			}
 		}

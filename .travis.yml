@@ -12,4 +12,6 @@ install:
   - glide up --strip-vendor
 
 script:
-  - go test $(glide novendor)
+  - diff -u <(echo -n) <(gofmt -d $(git ls-files | grep '.go$' | grep -v vendor))
+  - go vet $(glide novendor)
+  - go test -covermode=atomic $(glide novendor)
